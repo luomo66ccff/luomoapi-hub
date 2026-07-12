@@ -1,0 +1,6 @@
+{% extends "base.html" %}
+{% block title %}Settings - LuomoAPI Hub{% endblock %}
+{% block content %}
+<section class="page-head"><div><p class="eyebrow">System Status</p><h1>Settings</h1><p class="muted">Configuration state without exposing sensitive values.</p></div></section>
+<section class="card"><dl class="kv big">{% for key, value in status.items() %}<div><dt>{{ key }}</dt><dd>{% if value in ['configured','exists'] %}<span class="badge success">{{ value }}</span>{% elif value in ['missing'] %}<span class="badge muted">{{ value }}</span>{% else %}{{ value }}{% endif %}</dd></div>{% endfor %}</dl></section>
+{% endblock %}

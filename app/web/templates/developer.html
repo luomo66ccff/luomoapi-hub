@@ -1,0 +1,156 @@
+{% extends "base.html" %}
+
+{% block title %}Developer Console · LuomoAPI Hub{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <div class="eyebrow">Developer Console</div>
+    <h1>Welcome, {{ user.username }}</h1>
+    <p class="page-subtitle">
+      Manage API keys, inspect usage, and call enabled public gateway routes.
+    </p>
+  </div>
+</div>
+
+<section class="feature-grid">
+  <article class="feature-card">
+    <div class="feature-icon">👤</div>
+    <h2>Account</h2>
+    <p>Status</p>
+    <span class="badge {{ 'badge-success' if user.status == 'active' else 'badge-muted' }}">{{ user.status }}</span>
+    <p>Email</p>
+    <span class="badge {{ 'badge-success' if user.email_verified else 'badge-muted' }}">{{ 'verified' if user.email_verified else 'unverified' }}</span>
+  </article>
+
+  <article class="feature-card">
+    <div class="feature-icon">🔑</div>
+    <h2>API Keys</h2>
+    <p>{{ keys|length }} key records</p>
+    <a href="/developer/keys">Manage keys →</a>
+  </article>
+
+  <article class="feature-card">
+    <div class="feature-icon">📈</div>
+    <h2>Usage Today</h2>
+    <p class="stat-value">{{ usage_today }}</p>
+    <a href="/developer/logs">View logs →</a>
+  </article>
+</section>
+
+{% if not user.email_verified %}
+<section class="docs-note">
+  <strong>Email verification required</strong>
+  <p>
+    Please verify <code>{{ user.email }}</code> before requesting API keys. Verification links expire automatically.
+  </p>
+  {% if request.query_params.get("verification") == "sent" %}
+    <p><span class="badge badge-success">Verification email sent</span></p>
+  {% elif request.query_params.get("verification") == "failed" %}
+    <p><span class="badge badge-muted">Verification email could not be sent</span></p>
+  {% endif %}
+  <form method="post" action="/developer/resend-verification" class="inline-form">
+    <button class="btn btn-secondary compact" type="submit">Resend verification email</button>
+  </form>
+</section>
+{% endif %}
+
+{% if user.status != "active" %}
+<section class="docs-note">
+  <strong>Account pending approval</strong>
+  <p>
+    Your account is currently <code>{{ user.status }}</code>. API key requests and gateway usage
+    become available after admin approval.
+  </p>
+</section>
+{% endif %}
+
+<div class="page-header compact-header">
+  <div>
+    <div class="eyebrow">Available APIs</div>
+    <h1>Documented Routes</h1>
+  </div>
+</div>
+
+<section class="route-doc-grid">
+  {% for route in routes %}
+  <article class="route-card {% if not route.enabled %}route-disabled{% endif %}">
+    <div class="route-card-top">
+      <div>
+        <h2>{{ route.name }}</h2>
+        <p class="muted">{{ route.target_method }} /api/public/v1/{{ route.public_path }}</p>
+      </div>
+      {% if route.enabled %}
+        <span class="badge badge-success">Enabled</span>
+      {% else %}
+        <span class="badge badge-muted">Disabled</span>
+      {% endif %}
+    </div>
+
+    {% if not route.enabled %}
+    <div class="route-warning">
+      This route is documented but not currently enabled.
+    </div>
+    {% endif %}
+
+    <div class="route-meta">
+      <div>
+        <span class="meta-label">Required scope</span>
+        <span class="meta-value"><code>{{ route.required_scope or "—" }}</code></span>
+      </div>
+      <div>
+        <span class="meta-label">Auth</span>
+        <span class="meta-value">{{ "anonymous" if route.allow_anonymous else "API key required" }}</span>
+      </div>
+    </div>
+  </article>
+  {% else %}
+  <article class="route-card route-disabled">
+    <h2>No documented routes</h2>
+    <p class="muted">Public gateway routes will appear here after admin review.</p>
+  </article>
+  {% endfor %}
+</section>
+
+<div class="page-header compact-header">
+  <div>
+    <div class="eyebrow">Recent Calls</div>
+    <h1>Your Latest Usage</h1>
+  </div>
+</div>
+
+<section class="card table-wrap">
+  <table>
+    <thead>
+      <tr>
+        <th>Time</th>
+        <th>Route</th>
+        <th>Status</th>
+        <th>Latency</th>
+        <th>Result</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for log in recent %}
+      <tr>
+        <td>{{ log.created_at }}</td>
+        <td><code>{{ log.public_path }}</code></td>
+        <td>{{ log.status_code or "—" }}</td>
+        <td>{{ log.response_time_ms or "—" }} ms</td>
+        <td>
+          {% if log.success %}
+            <span class="badge badge-success">success</span>
+          {% else %}
+            <span class="badge badge-muted">failed</span>
+          {% endif %}
+        </td>
+      </tr>
+      {% else %}
+      <tr>
+        <td colspan="5" class="empty">No API calls yet.</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endblock %}

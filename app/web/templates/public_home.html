@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block title %}LuomoAPI Hub{% endblock %}
+{% block content %}
+<section class="mascot-card" style="margin-bottom: 22px;">
+  <div class="mascot-orb"><div class="mascot-face">✦</div></div>
+  <div class="mascot-content"><p class="eyebrow">LuomoAPI Hub</p><h3>Gateway spellbook for Luomo services.</h3><p>Scoped keys, public routes, and developer tools with secrets kept out of sight.</p></div>
+</section>
+<section class="hero hero-portal">
+  <div>
+    <p class="eyebrow">Public API Portal</p>
+    <h1>LuomoAPI Hub</h1>
+    <p class="lead">A controlled entry point for LuomoCore, AstrBot, and future project APIs.</p>
+    <div class="actions">
+      <a class="btn primary" href="/docs">View API Docs</a>
+      {% if user %}
+        <a class="btn ghost" href="{{ '/admin' if user.role == 'admin' else '/developer' }}">Open Console</a>
+      {% else %}
+        <a class="btn ghost" href="/register">Request Access</a>
+      {% endif %}
+    </div>
+  </div>
+  <div class="signal-panel card">
+    <span class="badge success">Gateway online</span>
+    <strong>{{ route_count }}</strong>
+    <small>documented public routes</small>
+    <p class="muted">Keys are issued after account approval. Raw API keys are shown once at approval time.</p>
+  </div>
+</section>
+<section class="grid three">
+  <article class="card mini"><h2>Public Docs</h2><p class="muted">Browse published routes and required scopes before requesting access.</p></article>
+  <article class="card mini"><h2>Developer Console</h2><p class="muted">Request API keys, monitor usage, and revoke stale credentials.</p></article>
+  <article class="card mini"><h2>Admin Gateway</h2><p class="muted">Approve users, manage routes, and audit gateway calls from one console.</p></article>
+</section>
+{% endblock %}

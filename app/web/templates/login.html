@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Login · LuomoAPI Hub</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body class="auth-page">
+  <main class="auth-shell">
+    <section class="auth-card">
+      <div class="auth-brand">
+        <div class="auth-orb">LH</div>
+        <div>
+          <h1>LuomoAPI Hub</h1>
+          <p>Developer Gateway Access</p>
+        </div>
+      </div>
+
+      <p class="auth-description">
+        For approved developers and administrators.
+      </p>
+
+      <div class="auth-tags">
+        <span>Admin Console</span>
+        <span>Developer Console</span>
+        <span>Public API Gateway</span>
+      </div>
+
+      {% if error %}
+        <div class="auth-error">
+          {% if error is string %}
+            {{ error }}
+          {% else %}
+            Invalid username or password.
+          {% endif %}
+        </div>
+      {% endif %}
+
+      <form method="post" action="/login" class="auth-form">
+        <input type="hidden" name="next" value="{{ next|default('/') }}">
+
+        <label>
+          <span>Username</span>
+          <input name="username" type="text" autocomplete="username" required>
+        </label>
+
+        <label>
+          <span>Password</span>
+          <input name="password" type="password" autocomplete="current-password" required>
+        </label>
+
+        <button type="submit" class="btn btn-primary auth-submit">
+          Enter API Hub
+        </button>
+      </form>
+
+      <div class="auth-footer">
+        <span>Need access?</span>
+        <a href="/register">Request developer access</a>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

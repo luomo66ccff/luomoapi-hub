@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+
+{% block title %}Public Routes · LuomoAPI Hub{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <div class="eyebrow">Admin Gateway</div>
+    <h1>Public Routes</h1>
+    <p class="page-subtitle">
+      Enable or disable documented gateway routes. Keep sensitive upstream APIs disabled
+      until response shape and scopes are reviewed.
+    </p>
+  </div>
+</div>
+
+<section class="route-doc-grid">
+  {% for route in routes %}
+  <article class="route-card {% if not route.enabled %}route-disabled{% endif %}">
+    <div class="route-card-top">
+      <div>
+        <h2>{{ route.name }}</h2>
+        <p class="muted">{{ route.target_method }} /api/public/v1/{{ route.public_path }}</p>
+      </div>
+
+      {% if route.enabled %}
+        <span class="badge badge-success">Enabled</span>
+      {% else %}
+        <span class="badge badge-muted">Disabled</span>
+      {% endif %}
+    </div>
+
+    {% if not route.enabled %}
+    <div class="route-warning">
+      This route is documented but not currently enabled.
+    </div>
+    {% endif %}
+
+    <div class="route-meta">
+      <div>
+        <span class="meta-label">Target path</span>
+        <span class="meta-value"><code>{{ route.target_path }}</code></span>
+      </div>
+      <div>
+        <span class="meta-label">Required scope</span>
+        <span class="meta-value"><code>{{ route.required_scope or "—" }}</code></span>
+      </div>
+      <div>
+        <span class="meta-label">Docs</span>
+        <span class="meta-value">{{ "visible" if route.public_docs else "hidden" }}</span>
+      </div>
+      <div>
+        <span class="meta-label">Auth</span>
+        <span class="meta-value">{{ "anonymous" if route.allow_anonymous else "API key required" }}</span>
+      </div>
+    </div>
+
+    <form method="post" action="/admin/routes/{{ route.id }}/toggle" class="route-actions">
+      {% if route.enabled %}
+        <input type="hidden" name="enabled" value="0">
+        <button class="btn btn-secondary danger-soft" type="submit">
+          Disable route
+        </button>
+      {% else %}
+        <input type="hidden" name="enabled" value="1">
+        <button class="btn btn-primary" type="submit">
+          Enable route
+        </button>
+      {% endif %}
+    </form>
+  </article>
+  {% else %}
+  <article class="route-card route-disabled">
+    <h2>No public routes</h2>
+    <p class="muted">Create public gateway routes first.</p>
+  </article>
+  {% endfor %}
+</section>
+{% endblock %}

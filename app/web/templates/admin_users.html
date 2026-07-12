@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block title %}Users - LuomoAPI Hub{% endblock %}
+{% block content %}
+<section class="page-head">
+  <div>
+    <p class="eyebrow">Admin</p>
+    <h1>Users</h1>
+    <p class="muted">Registered developers must verify email before activation.</p>
+  </div>
+</section>
+<section class="card table-wrap">
+  <table>
+    <thead>
+      <tr>
+        <th>User</th>
+        <th>Email</th>
+        <th>Role</th>
+        <th>Status</th>
+        <th>Email verification</th>
+        <th>Keys</th>
+        <th>Reason</th>
+        <th>Action</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for item in users %}
+      <tr>
+        <td>{{ item.username }}</td>
+        <td>{{ item.email }}</td>
+        <td>{{ item.role }}</td>
+        <td><span class="badge {{ 'success' if item.status == 'active' else 'warning' if item.status == 'pending' else 'muted' }}">{{ item.status }}</span></td>
+        <td><span class="badge {{ 'success' if item.email_verified else 'muted' }}">{{ 'verified' if item.email_verified else 'pending' }}</span></td>
+        <td>{{ item.key_count }}</td>
+        <td>{{ item.usage_reason or '-' }}</td>
+        <td>
+          <form class="inline-form" method="post" action="/admin/users/{{ item.id }}/status">
+            <select name="status_value">
+              <option value="pending" {{ 'selected' if item.status == 'pending' else '' }}>pending</option>
+              <option value="active" {{ 'selected' if item.status == 'active' else '' }} {% if not item.email_verified and item.role != 'admin' %}disabled{% endif %}>active</option>
+              <option value="suspended" {{ 'selected' if item.status == 'suspended' else '' }}>suspended</option>
+              <option value="disabled" {{ 'selected' if item.status == 'disabled' else '' }}>disabled</option>
+            </select>
+            <button class="btn ghost compact" type="submit">Save</button>
+          </form>
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="8" class="empty">No users.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endblock %}

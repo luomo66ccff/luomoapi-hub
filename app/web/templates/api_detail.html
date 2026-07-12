@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block title %}{{ api.name }} - LuomoAPI Hub{% endblock %}
+{% block content %}
+<section class="page-head"><div><p class="eyebrow">API Detail</p><h1>{{ api.name }}</h1><p class="muted">{{ api.base_url }}</p></div><a class="btn ghost" href="/apis">Back</a></section>
+<section class="grid two">
+  <article class="card"><h2>Profile</h2><dl class="kv"><div><dt>Slug</dt><dd>{{ api.slug }}</dd></div><div><dt>Auth</dt><dd>{{ api.auth_type }}</dd></div><div><dt>Secret Ref</dt><dd>{{ api.secret_ref or '—' }}</dd></div><div><dt>Tags</dt><dd>{{ api.tags or '—' }}</dd></div></dl><p class="muted">{{ api.description or 'No description.' }}</p></article>
+  <article class="card"><h2>Add Endpoint</h2><form class="form-grid compact-form" method="post" action="/apis/{{ api.id }}/endpoints"><label><span>Name</span><input name="name" required></label><label><span>Method</span><select name="method">{% for method in methods %}<option>{{ method }}</option>{% endfor %}</select></label><label class="wide"><span>Path</span><input name="path" placeholder="/health" required></label><label class="wide"><span>Description</span><textarea name="description"></textarea></label><label class="check"><input type="checkbox" name="enabled" checked> Enabled</label><button class="btn primary wide" type="submit">Add Endpoint</button></form></article>
+</section>
+<section class="card">
+  <div class="card-head"><h2>Endpoints</h2><a class="btn ghost compact" href="/tester?api_id={{ api.id }}">Open Tester</a></div>
+  <div class="table-wrap"><table><thead><tr><th>Method</th><th>Path</th><th>Name</th><th>Status</th><th></th></tr></thead><tbody>{% for endpoint in endpoints %}<tr><td><span class="badge info">{{ endpoint.method }}</span></td><td><code>{{ endpoint.path }}</code></td><td>{{ endpoint.name }}</td><td>{{ 'enabled' if endpoint.enabled else 'disabled' }}</td><td><a href="/tester?api_id={{ api.id }}&endpoint_id={{ endpoint.id }}">Test</a></td></tr>{% else %}<tr><td colspan="5">No endpoints yet.</td></tr>{% endfor %}</tbody></table></div>
+</section>
+{% endblock %}

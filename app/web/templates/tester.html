@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}Tester - LuomoAPI Hub{% endblock %}
+{% block content %}
+<section class="page-head"><div><p class="eyebrow">Endpoint Tester</p><h1>Tester</h1><p class="muted">Send redacted, logged requests to registered APIs.</p></div></section>
+{% if error %}<div class="alert danger">{{ error }}</div>{% endif %}
+<section class="grid two tester-grid">
+  <form class="card form-grid tester-form" method="post" action="/tester">
+    <label class="wide"><span>API</span><select name="api_id">{% for api in apis %}<option value="{{ api.id }}" {{ 'selected' if selected_api_id == api.id }}>{{ api.name }} · {{ api.base_url }}</option>{% endfor %}</select></label>
+    <label><span>Method</span><select name="method">{% for method in methods %}<option value="{{ method }}" {{ 'selected' if form.method == method }}>{{ method }}</option>{% endfor %}</select></label>
+    <label class="wide"><span>Path</span><input name="path" value="{{ form.path }}" placeholder="/health" required></label>
+    <label class="wide"><span>Headers JSON</span><textarea name="headers_json">{{ form.headers_json }}</textarea></label>
+    <label class="wide"><span>Query JSON</span><textarea name="query_json">{{ form.query_json }}</textarea></label>
+    <label class="wide"><span>Body JSON</span><textarea name="body_json">{{ form.body_json }}</textarea></label>
+    <label class="check"><input type="checkbox" name="use_saved_auth" {{ 'checked' if form.use_saved_auth }}> Use saved auth</label>
+    <button class="btn primary wide" type="submit">Send</button>
+  </form>
+  <article class="card result-card">
+    <h2>Response</h2>
+    {% if result %}
+      <dl class="kv"><div><dt>Status Code</dt><dd>{{ result.status_code or 'ERR' }}</dd></div><div><dt>Response Time</dt><dd>{{ result.response_time_ms }} ms</dd></div><div><dt>Success</dt><dd><span class="badge {{ 'success' if result.success else 'warning' }}">{{ result.success }}</span></dd></div></dl>
+      <h3>Headers</h3><pre>{{ result.response_headers_preview }}</pre>
+      <h3>Body</h3><pre>{{ result.response_body_display }}</pre>
+    {% else %}<div class="empty">Send a request to see the response.</div>{% endif %}
+  </article>
+</section>
+{% endblock %}

@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+
+{% block title %}Key Requests · LuomoAPI Hub{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <div class="eyebrow">Admin Console</div>
+    <h1>API Key Requests</h1>
+    <p class="page-subtitle">
+      Review developer API key requests and issue scoped credentials. Generated keys are shown only once.
+    </p>
+  </div>
+</div>
+
+{% if new_key %}
+<section class="docs-note key-reveal">
+  <strong>New API Key generated</strong>
+  <p>This key is shown only once. Copy it now and send it to the approved developer through a safe channel.</p>
+  <div class="code-block">
+<pre><code>{{ new_key }}</code></pre>
+  </div>
+  {% if prefix %}
+  <p class="muted">Prefix: <code>{{ prefix }}</code></p>
+  {% endif %}
+</section>
+{% endif %}
+
+<section class="card table-wrap">
+  <table>
+    <thead>
+      <tr>
+        <th>Request</th>
+        <th>User</th>
+        <th>Scopes</th>
+        <th>Reason</th>
+        <th>Status</th>
+        <th>Admin note</th>
+        <th>Action</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for item in requests %}
+      <tr>
+        <td>
+          <strong>{{ item.name }}</strong><br>
+          <span class="muted">{{ item.created_at }}</span>
+        </td>
+        <td>{{ item.username or "—" }}</td>
+        <td><code>{{ item.requested_scopes or "—" }}</code></td>
+        <td>{{ item.requested_reason or "—" }}</td>
+        <td>
+          <span class="badge {{ 'badge-success' if item.status == 'approved' else 'badge-muted' }}">
+            {{ item.status }}
+          </span>
+        </td>
+        <td>{{ item.admin_note or "—" }}</td>
+        <td>
+          {% if item.status == "pending" %}
+          <form method="post" action="/admin/key-requests/{{ item.id }}/approve" class="stack-form">
+            <label>
+              <span>Scopes</span>
+              <input name="scopes" value="{{ item.requested_scopes or 'luomocore:health' }}">
+            </label>
+            <label>
+              <span>Allowed routes</span>
+              <input name="allowed_routes" value="luomocore/health">
+            </label>
+            <label>
+              <span>Rate / min</span>
+              <input name="rate_limit_per_minute" value="60">
+            </label>
+            <label>
+              <span>Daily quota</span>
+              <input name="daily_quota" value="1000">
+            </label>
+            <button class="btn btn-primary compact" type="submit">Approve & Generate Key</button>
+          </form>
+
+          <form method="post" action="/admin/key-requests/{{ item.id }}/reject" class="stack-form reject-form">
+            <input name="admin_note" placeholder="Reason for rejection">
+            <button class="btn ghost compact danger-soft" type="submit">Reject</button>
+          </form>
+          {% else %}
+            —
+          {% endif %}
+        </td>
+      </tr>
+      {% else %}
+      <tr>
+        <td colspan="7" class="empty">No API key requests.</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endblock %}

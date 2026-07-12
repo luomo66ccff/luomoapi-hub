@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0b1111">
+  <title>{% block title %}LuomoAPI Hub{% endblock %}</title>
+  <link rel="stylesheet" href="/static/style.css?v=20260711-1">
+</head>
+<body>
+  {% set path = request.url.path %}
+  <header class="topbar">
+    <a class="brand" href="/">
+      <span class="brand-mark">API</span>
+      <span><strong>LuomoAPI Hub</strong><small>Developer Gateway</small></span>
+    </a>
+    <nav>
+      <a class="{{ 'active' if path == '/' else '' }}" href="/">Home</a>
+      <a class="{{ 'active' if path.startswith('/docs') else '' }}" href="/docs">Docs</a>
+      {% if user %}
+        {% if user.role == 'admin' %}
+          <a class="{{ 'active' if path == '/admin' else '' }}" href="/admin">Admin</a>
+          <a class="{{ 'active' if path.startswith('/admin/users') else '' }}" href="/admin/users">Users</a>
+          <a class="{{ 'active' if path.startswith('/admin/key-requests') else '' }}" href="/admin/key-requests">Requests</a>
+          <a class="{{ 'active' if path.startswith('/admin/api-keys') else '' }}" href="/admin/api-keys">Keys</a>
+          <a class="{{ 'active' if path.startswith('/admin/routes') else '' }}" href="/admin/routes">Routes</a>
+          <a class="{{ 'active' if path.startswith('/apis') else '' }}" href="/apis">APIs</a>
+          <a class="{{ 'active' if path.startswith('/tester') else '' }}" href="/tester">Tester</a>
+          <a class="{{ 'active' if path.startswith('/secrets') else '' }}" href="/secrets">Secrets</a>
+          <a class="{{ 'active' if path == '/logs' else '' }}" href="/logs">Logs</a>
+          <a class="{{ 'active' if path.startswith('/settings') else '' }}" href="/settings">Settings</a>
+        {% else %}
+          <a class="{{ 'active' if path == '/developer' else '' }}" href="/developer">Developer</a>
+          <a class="{{ 'active' if path.startswith('/developer/keys') else '' }}" href="/developer/keys">API Keys</a>
+          <a class="{{ 'active' if path.startswith('/developer/logs') else '' }}" href="/developer/logs">Usage</a>
+        {% endif %}
+      {% else %}
+        <a class="{{ 'active' if path.startswith('/register') else '' }}" href="/register">Register</a>
+        <a class="{{ 'active' if path.startswith('/login') else '' }}" href="/login">Login</a>
+      {% endif %}
+    </nav>
+    {% if user %}
+      <form method="post" action="/logout"><button class="btn ghost compact" type="submit">Logout</button></form>
+    {% else %}
+      <a class="btn ghost compact" href="/login">Sign in</a>
+    {% endif %}
+  </header>
+  <main class="shell">{% block content %}{% endblock %}</main>
+  <footer class="footer">LuomoAPI Hub · Scoped access · Auditable routes · Tokyo edge</footer>
+</body>
+</html>

@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Email Verification - LuomoAPI Hub</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body class="auth-page">
+  <main class="auth-shell">
+    <section class="auth-card">
+      <div class="auth-brand">
+        <div class="auth-orb">LH</div>
+        <div>
+          <h1>Email Verification</h1>
+          <p>LuomoAPI Hub</p>
+        </div>
+      </div>
+
+      <div class="{{ 'auth-success' if success else 'auth-error' }}">{{ message }}</div>
+
+      <div class="auth-footer">
+        <a href="/login">Go to login</a>
+        <span>or</span>
+        <a href="/">back home</a>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

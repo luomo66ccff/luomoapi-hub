@@ -1,0 +1,18 @@
+services:
+  luomoapi-hub:
+    build: .
+    container_name: luomoapi-hub
+    restart: unless-stopped
+    env_file:
+      - .env
+    volumes:
+      - ./data:/app/data
+    ports:
+      - "127.0.0.1:8790:8790"
+    networks:
+      - default
+      - luomocore_default
+
+networks:
+  luomocore_default:
+    external: true

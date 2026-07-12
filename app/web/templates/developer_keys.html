@@ -1,0 +1,172 @@
+{% extends "base.html" %}
+
+{% block title %}My API Keys - LuomoAPI Hub{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <div class="eyebrow">Developer Console</div>
+    <h1>My API Keys</h1>
+    <p class="page-subtitle">
+      Request scoped API keys and review your issued credentials. Full keys are only shown once when created.
+    </p>
+  </div>
+</div>
+
+{% if not user.email_verified %}
+<section class="docs-note">
+  <strong>Email verification required</strong>
+  <p>Verify <code>{{ user.email }}</code> before requesting API keys.</p>
+  <form method="post" action="/developer/resend-verification" class="inline-form">
+    <button class="btn btn-secondary compact" type="submit">Resend verification email</button>
+  </form>
+</section>
+{% endif %}
+
+{% if user.status != "active" %}
+<section class="docs-note">
+  <strong>Account pending approval</strong>
+  <p>
+    Your current account status is <code>{{ user.status }}</code>. API key requests require an active account.
+  </p>
+</section>
+{% endif %}
+
+{% if created %}
+<section class="docs-note">
+  <strong>Request submitted</strong>
+  <p>Your API key request has been submitted for admin review.</p>
+</section>
+{% endif %}
+
+<section class="route-card">
+  <div class="route-card-top">
+    <div>
+      <h2>Request a new API Key</h2>
+      <p class="muted">Describe the intended use and requested scopes. Admin approval is required.</p>
+    </div>
+  </div>
+
+  <form method="post" action="/developer/keys/request" class="auth-form">
+    <label>
+      <span>Key name</span>
+      <input name="name" type="text" placeholder="My integration key" required>
+    </label>
+
+    <label>
+      <span>Requested scopes</span>
+      <input name="requested_scopes" type="text" placeholder="luomocore:health">
+      <small>Examples: luomocore:health, astrbot:read</small>
+    </label>
+
+    <label>
+      <span>Reason</span>
+      <textarea name="requested_reason" rows="4" placeholder="What will this key be used for?"></textarea>
+    </label>
+
+    <button class="btn btn-primary auth-submit" type="submit" {% if user.status != "active" or not user.email_verified %}disabled{% endif %}>
+      Submit Key Request
+    </button>
+  </form>
+</section>
+
+<div class="page-header compact-header">
+  <div>
+    <div class="eyebrow">Credentials</div>
+    <h1>Issued Keys</h1>
+  </div>
+</div>
+
+<section class="card table-wrap">
+  <table>
+    <thead>
+      <tr>
+        <th>Key</th>
+        <th>Status</th>
+        <th>Scopes</th>
+        <th>Allowed routes</th>
+        <th>Quota</th>
+        <th>Last used</th>
+        <th>Action</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for item in keys %}
+      <tr>
+        <td>
+          <strong>{{ item.name }}</strong><br>
+          <span class="muted">{{ item.key_prefix }}</span>
+        </td>
+        <td>
+          <span class="badge {{ 'badge-success' if item.status == 'active' else 'badge-muted' }}">
+            {{ item.status }}
+          </span>
+        </td>
+        <td><code>{{ item.scopes or "-" }}</code></td>
+        <td><code>{{ item.allowed_routes or "-" }}</code></td>
+        <td>
+          {{ item.rate_limit_per_minute or 0 }}/min<br>
+          <span class="muted">{{ item.daily_quota or 0 }}/day</span>
+        </td>
+        <td>{{ item.last_used_at or "-" }}</td>
+        <td>
+          {% if item.status == "active" %}
+          <form method="post" action="/developer/keys/{{ item.id }}/revoke" class="inline-form">
+            <button class="btn ghost compact danger-soft" type="submit">Revoke</button>
+          </form>
+          {% else %}
+            -
+          {% endif %}
+        </td>
+      </tr>
+      {% else %}
+      <tr>
+        <td colspan="7" class="empty">No issued API keys yet.</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+
+<div class="page-header compact-header">
+  <div>
+    <div class="eyebrow">Requests</div>
+    <h1>Key Requests</h1>
+  </div>
+</div>
+
+<section class="card table-wrap">
+  <table>
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Scopes</th>
+        <th>Status</th>
+        <th>Reason</th>
+        <th>Created</th>
+        <th>Admin note</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for req in requests %}
+      <tr>
+        <td>{{ req.name }}</td>
+        <td><code>{{ req.requested_scopes or "-" }}</code></td>
+        <td>
+          <span class="badge {{ 'badge-success' if req.status == 'approved' else 'badge-muted' }}">
+            {{ req.status }}
+          </span>
+        </td>
+        <td>{{ req.requested_reason or "-" }}</td>
+        <td>{{ req.created_at }}</td>
+        <td>{{ req.admin_note or "-" }}</td>
+      </tr>
+      {% else %}
+      <tr>
+        <td colspan="6" class="empty">No key requests yet.</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endblock %}

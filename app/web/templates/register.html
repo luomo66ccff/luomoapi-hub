@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Register - LuomoAPI Hub</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body class="auth-page">
+  <main class="auth-shell">
+    <section class="auth-card register-card">
+      <div class="auth-brand">
+        <div class="auth-orb">LH</div>
+        <div>
+          <h1>Request Access</h1>
+          <p>LuomoAPI Hub Developer Registration</p>
+        </div>
+      </div>
+
+      <p class="auth-description">
+        Create a developer account, verify your email, then wait for admin
+        approval. API key requests unlock only after both checks pass.
+      </p>
+
+      {% if error %}
+        <div class="auth-error">{{ error }}</div>
+      {% endif %}
+
+      {% if message %}
+        <div class="auth-success">{{ message }}</div>
+      {% elif submitted %}
+        <div class="auth-success">
+          Registration submitted. Please check your email for the verification link.
+        </div>
+      {% endif %}
+
+      <div class="auth-tags">
+        <span>1 Register</span>
+        <span>2 Verify Email</span>
+        <span>3 Admin Approval</span>
+      </div>
+
+      <form method="post" action="/register" class="auth-form">
+        <label>
+          <span>Username</span>
+          <input name="username" type="text" placeholder="your_name" autocomplete="username" required>
+        </label>
+
+        <label>
+          <span>Email</span>
+          <input name="email" type="email" placeholder="you@example.com" autocomplete="email" required>
+          <small>We will send a one-time verification link to this address.</small>
+        </label>
+
+        <label>
+          <span>Use case</span>
+          <textarea name="usage_reason" rows="4" placeholder="Briefly describe why you need API access." required></textarea>
+        </label>
+
+        <label>
+          <span>Password</span>
+          <input name="password" type="password" autocomplete="new-password" required>
+          <small>Use at least 10 characters.</small>
+        </label>
+
+        <label>
+          <span>Confirm password</span>
+          <input name="confirm_password" type="password" autocomplete="new-password" required>
+        </label>
+
+        <button type="submit" class="btn btn-primary auth-submit">
+          Submit Access Request
+        </button>
+      </form>
+
+      <div class="auth-footer">
+        <span>Already verified and approved?</span>
+        <a href="/login">Sign in</a>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

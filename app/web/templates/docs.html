@@ -1,0 +1,120 @@
+{% extends "base.html" %}
+
+{% block title %}API Docs - LuomoAPI Hub{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <div class="eyebrow">Public Gateway</div>
+    <h1>API Documentation</h1>
+    <p class="page-subtitle">
+      Public routes are called through <code>/api/public/v1/{route}</code>.
+      Enabled routes require a scoped LuomoAPI key unless marked anonymous.
+    </p>
+  </div>
+</div>
+
+<div class="docs-note">
+  <strong>Authentication</strong>
+  <p>
+    Use either <code>Authorization: Bearer lapi_xxx</code> or
+    <code>X-API-Key: lapi_xxx</code>. API keys are issued after email
+    verification, admin approval, and API key request review.
+  </p>
+  <p>
+    Scope matching is exact. A key with <code>astrbot:read</code> can call
+    AstrBot read routes; a key with <code>luomocore:health</code> can call
+    LuomoCore health. Admin-issued wildcard keys may use <code>*</code>.
+  </p>
+  <p>
+    Rate limits and quotas are enforced per API key. The default issued-key
+    policy is currently <code>60/min</code> and <code>1000/day</code>, but
+    admins can set different limits per key.
+  </p>
+</div>
+
+<div class="route-doc-grid">
+  {% if routes and routes|length > 0 %}
+    {% for route in routes %}
+      {% set is_enabled = route.enabled if route.enabled is defined else route['enabled'] %}
+      {% set is_anonymous = route.allow_anonymous if route.allow_anonymous is defined else route['allow_anonymous'] %}
+      {% set public_path = route.public_path if route.public_path is defined else route['public_path'] %}
+      {% set method = route.target_method if route.target_method is defined else route['target_method'] %}
+      {% set scope = route.required_scope if route.required_scope is defined else route['required_scope'] %}
+      {% set name = route.name if route.name is defined else route['name'] %}
+      {% set rate = route.rate_limit_per_minute if route.rate_limit_per_minute is defined else 60 %}
+      {% set auth_label = "anonymous" if is_anonymous else "API key required" %}
+      {% set status_label = "Enabled" if is_enabled else "Disabled" %}
+
+      <article class="route-card {% if not is_enabled %}route-disabled{% endif %}">
+        <div class="route-card-top">
+          <div>
+            <h2>{{ name }}</h2>
+            <p class="muted">{{ method }} /api/public/v1/{{ public_path }}</p>
+            <p class="route-state-line">
+              <span class="badge {{ 'badge-success' if is_enabled else 'badge-muted' }}">{{ status_label }} · {{ auth_label }}</span>
+            </p>
+          </div>
+        </div>
+
+        {% if not is_enabled %}
+          <div class="route-warning">
+            This route is documented but not currently enabled. Calls return
+            <code>route_disabled</code> until an admin enables it.
+          </div>
+        {% endif %}
+
+        <div class="route-meta">
+          <div>
+            <span class="meta-label">Method</span>
+            <span class="meta-value">{{ method }}</span>
+          </div>
+          <div>
+            <span class="meta-label">Required scope</span>
+            <span class="meta-value"><code>{{ scope or "none" }}</code></span>
+          </div>
+          <div>
+            <span class="meta-label">Auth</span>
+            <span class="meta-value">{{ auth_label }}</span>
+          </div>
+          <div>
+            <span class="meta-label">Rate limit</span>
+            <span class="meta-value">{{ rate or 60 }}/min per key</span>
+          </div>
+        </div>
+
+        <h3>Curl examples</h3>
+        <div class="code-block">
+<pre><code>curl -H "Authorization: Bearer lapi_xxx" \
+  https://api.luomo.moe/api/public/v1/{{ public_path }}</code></pre>
+        </div>
+        <div class="code-block">
+<pre><code>curl -H "X-API-Key: lapi_xxx" \
+  https://api.luomo.moe/api/public/v1/{{ public_path }}</code></pre>
+        </div>
+
+        <details open>
+          <summary>Error responses</summary>
+          <div class="code-block">
+<pre><code>401 {"error":"unauthorized","message":"Invalid or missing API key."}
+403 {"error":"forbidden","message":"API key does not have the required scope."}
+404 {"error":"route_disabled","message":"This route is documented but not currently enabled."}
+405 {"error":"method_not_allowed","message":"This route only allows {{ method }}."}
+429 {"error":"rate_limited","message":"API key rate limit exceeded."}
+502 {"error":"upstream_error","message":"Upstream API request failed."}</code></pre>
+          </div>
+        </details>
+      </article>
+    {% endfor %}
+  {% else %}
+    <article class="route-card route-disabled">
+      <div class="route-card-top">
+        <div>
+          <h2>No documented routes</h2>
+          <p class="muted">Public gateway routes will appear here after admin review.</p>
+        </div>
+      </div>
+    </article>
+  {% endif %}
+</div>
+{% endblock %}

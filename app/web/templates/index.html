@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+
+{% block title %}LuomoAPI Hub{% endblock %}
+
+{% block content %}
+<section class="public-hero">
+  <div class="hero-copy">
+    <div class="eyebrow">Public API Portal</div>
+    <h1>LuomoAPI Hub</h1>
+    <p class="hero-subtitle">
+      A controlled entry point for LuomoCore, AstrBot, and future project APIs.
+    </p>
+
+    <div class="hero-actions">
+      <a class="btn btn-primary" href="/docs">View API Docs</a>
+      <a class="btn btn-secondary" href="/register">Request Access</a>
+      <a class="btn btn-ghost" href="/login">Sign in</a>
+    </div>
+  </div>
+
+  <div class="gateway-status-card">
+    <div class="status-row">
+      <span class="pulse-dot"></span>
+      <span class="status-label">Gateway ready</span>
+    </div>
+
+    <div class="route-stats">
+      <div>
+        <span class="stat-value">{{ enabled_routes|default(0) }}</span>
+        <span class="stat-label">enabled routes</span>
+      </div>
+      <div>
+        <span class="stat-value">{{ disabled_routes|default(0) }}</span>
+        <span class="stat-label">disabled routes</span>
+      </div>
+      <div>
+        <span class="stat-value">{{ documented_routes|default(0) }}</span>
+        <span class="stat-label">documented routes</span>
+      </div>
+    </div>
+
+    <p class="muted small">
+      Enabled routes accept scoped API keys. Disabled routes stay documented but cannot be called.
+    </p>
+  </div>
+</section>
+
+<section class="quick-start-card">
+  <div class="page-header compact-header">
+    <div>
+      <div class="eyebrow">Quick Start</div>
+      <h1>From account to first API call</h1>
+    </div>
+  </div>
+  <div class="quick-steps">
+    <div><span>1</span><strong>Register</strong><p>Create a developer account with your email address.</p></div>
+    <div><span>2</span><strong>Verify Email</strong><p>Open the verification link sent by LuomoAPI Hub.</p></div>
+    <div><span>3</span><strong>Admin Approval</strong><p>Wait for the account to be approved in the admin console.</p></div>
+    <div><span>4</span><strong>Request API Key</strong><p>Ask for the scopes your integration needs.</p></div>
+    <div><span>5</span><strong>Call API</strong><p>Use your <code>lapi_...</code> key with the public gateway.</p></div>
+  </div>
+</section>
+
+<section class="feature-grid">
+  <article class="feature-card">
+    <div class="feature-icon">📘</div>
+    <h2>Public Docs</h2>
+    <p>
+      Browse documented public routes, authentication requirements, scopes,
+      rate limits, and example requests.
+    </p>
+    <a href="/docs">Open docs →</a>
+  </article>
+
+  <article class="feature-card">
+    <div class="feature-icon">🧑‍💻</div>
+    <h2>Developer Console</h2>
+    <p>
+      Approved developers can manage API keys, inspect usage logs, and call
+      enabled gateway routes with scoped access.
+    </p>
+    <a href="/register">Request access →</a>
+  </article>
+
+  <article class="feature-card">
+    <div class="feature-icon">🛡️</div>
+    <h2>Admin Gateway</h2>
+    <p>
+      Admins can approve developers, review API key requests, manage public
+      routes, and monitor gateway usage.
+    </p>
+    <a href="/login">Admin sign in →</a>
+  </article>
+  <article class="feature-card">
+    <div class="feature-icon">SAFE</div>
+    <h2>Security Boundary</h2>
+    <p>
+      Report issues for the API portal and gateway. Do not test SSH, firewall,
+      unrelated domains, or destructive scenarios.
+    </p>
+    <a href="/security">Security policy →</a>
+  </article>
+</section>
+{% endblock %}

@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block title %}Key Approved - LuomoAPI Hub{% endblock %}
+{% block content %}
+<section class="page-head"><div><p class="eyebrow">Credential Issued</p><h1>API key generated</h1><p class="muted">Copy it now. It will not be stored in readable form or shown again.</p></div></section>
+<section class="card key-reveal">
+  <span class="badge success">Prefix {{ prefix }}</span>
+  <pre>{{ new_key }}</pre>
+  <a class="btn primary" href="/admin/key-requests">Back to requests</a>
+</section>
+{% endblock %}

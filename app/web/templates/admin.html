@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block title %}Admin - LuomoAPI Hub{% endblock %}
+{% block content %}
+<section class="page-head"><div><p class="eyebrow">Admin Console</p><h1>Gateway Control</h1><p class="muted">Manage users, routes, requests, and usage from the private console.</p></div></section>
+<section class="metrics">
+  <div class="card metric"><span>Users</span><strong>{{ stats.users }}</strong><small>{{ stats.pending_users }} pending</small></div>
+  <div class="card metric"><span>Key requests</span><strong>{{ stats.key_requests }}</strong><small>Pending approval</small></div>
+  <div class="card metric"><span>Calls today</span><strong>{{ stats.calls_today }}</strong><small>Public gateway</small></div>
+</section>
+<section class="grid three">
+  <a class="card mini" href="/admin/users"><h2>Users</h2><p class="muted">Approve or suspend developer accounts.</p></a>
+  <a class="card mini" href="/admin/key-requests"><h2>Key Requests</h2><p class="muted">Issue hashed API keys and show raw keys once.</p></a>
+  <a class="card mini" href="/admin/routes"><h2>Routes</h2><p class="muted">Publish controlled gateway routes.</p></a>
+</section>
+<section class="card">
+  <div class="card-head"><h2>Recent gateway calls</h2><a href="/admin/logs">All logs</a></div>
+  <div class="table-wrap"><table><thead><tr><th>Time</th><th>Method</th><th>Route</th><th>Status</th><th>Latency</th></tr></thead><tbody>{% for log in recent %}<tr><td>{{ log.created_at }}</td><td>{{ log.method }}</td><td><code>{{ log.public_path }}</code></td><td>{{ log.status_code or '-' }}</td><td>{{ log.response_time_ms or '-' }} ms</td></tr>{% else %}<tr><td colspan="5" class="empty">No usage yet.</td></tr>{% endfor %}</tbody></table></div>
+</section>
+{% endblock %}
