@@ -1,120 +1,123 @@
 {% extends "base.html" %}
+{% from "_macros.html" import sdk_screen %}
+{% block title %}接口文档 · LuomoAPI{% endblock %}
+{% block description %}LuomoAPI 接口文档：快速开始、认证、OpenAI 兼容 AI 接口、积分计费、错误码与业务接口目录。{% endblock %}
+{% block public %}
+<div class="wrap docs">
+  <nav class="docs-nav" aria-label="文档目录">
+    <p>入门</p>
+    <a href="#quickstart">快速开始</a><a href="#authentication">认证与密钥</a>
+    <p>AI 接口</p>
+    <a href="#ai">OpenAI 兼容接口</a><a href="#billing">积分与计费</a><a href="#errors">错误码</a>
+    <p>业务接口</p>
+    <a href="#endpoints">接口目录</a>
+    <div class="route-links">{% for route in routes %}<a href="#endpoint-{{ route.id }}">{{ route.name }}</a>{% endfor %}</div>
+    <p>账户</p>
+    <a href="/developer/keys">管理 API 密钥 ↗</a><a href="/pricing">价格表 ↗</a>
+  </nav>
 
-{% block title %}API Docs - LuomoAPI Hub{% endblock %}
+  <article class="docs-body">
+    <p class="eyebrow">Reference · 接口文档</p>
+    <h1>接入指南</h1>
+    <p class="lead docs-lead">AI 模型走 OpenAI 兼容地址 <code>https://api.luomo.moe/v1</code>；洛墨站其他业务服务统一经过 <code>/api/public/v1/{route}</code>。</p>
 
-{% block content %}
-<div class="page-header">
-  <div>
-    <div class="eyebrow">Public Gateway</div>
-    <h1>API Documentation</h1>
-    <p class="page-subtitle">
-      Public routes are called through <code>/api/public/v1/{route}</code>.
-      Enabled routes require a scoped LuomoAPI key unless marked anonymous.
-    </p>
-  </div>
-</div>
+    <section id="quickstart">
+      <h2>快速开始</h2>
+      <ol>
+        <li><a href="/register">注册账户</a>，注册后立即启用，无需人工审核。</li>
+        <li>在 <a href="/developer/keys">API 密钥</a> 页面自助签发密钥，完整密钥只显示一次，请立即保存。</li>
+        <li>在 <a href="/developer/credits">积分</a> 页面兑换积分（兑换码或管理员加分）。</li>
+        <li>把客户端的 base_url 设为 <code>https://api.luomo.moe/v1</code>，发起第一次请求：</li>
+      </ol>
+      {{ sdk_screen(id='docs-sdk') }}
+    </section>
 
-<div class="docs-note">
-  <strong>Authentication</strong>
-  <p>
-    Use either <code>Authorization: Bearer lapi_xxx</code> or
-    <code>X-API-Key: lapi_xxx</code>. API keys are issued after email
-    verification, admin approval, and API key request review.
-  </p>
-  <p>
-    Scope matching is exact. A key with <code>astrbot:read</code> can call
-    AstrBot read routes; a key with <code>luomocore:health</code> can call
-    LuomoCore health. Admin-issued wildcard keys may use <code>*</code>.
-  </p>
-  <p>
-    Rate limits and quotas are enforced per API key. The default issued-key
-    policy is currently <code>60/min</code> and <code>1000/day</code>, but
-    admins can set different limits per key.
-  </p>
-</div>
+    <section id="authentication">
+      <h2>认证与密钥</h2>
+      <p>使用 <code>Authorization: Bearer lapi_xxx</code> 或 <code>X-API-Key: lapi_xxx</code> 携带密钥；业务接口中标为“匿名可用”的无需认证。</p>
+      <ul>
+        <li>权限按 scope 精确匹配。自助密钥包含 <code>models:read</code>、<code>chat:completions</code>、<code>responses:create</code>，默认每分钟 60 次。</li>
+        <li>每个账户最多保留 20 个有效密钥；所有密钥共用账户积分。</li>
+        <li>账户停用后，名下密钥同步失效；业务服务权限由管理员单独配置。</li>
+        <li>密钥只应放在服务端或受信任的本地应用里，不要写进前端代码或公开仓库。</li>
+      </ul>
+    </section>
 
-<div class="route-doc-grid">
-  {% if routes and routes|length > 0 %}
-    {% for route in routes %}
-      {% set is_enabled = route.enabled if route.enabled is defined else route['enabled'] %}
-      {% set is_anonymous = route.allow_anonymous if route.allow_anonymous is defined else route['allow_anonymous'] %}
-      {% set public_path = route.public_path if route.public_path is defined else route['public_path'] %}
-      {% set method = route.target_method if route.target_method is defined else route['target_method'] %}
-      {% set scope = route.required_scope if route.required_scope is defined else route['required_scope'] %}
-      {% set name = route.name if route.name is defined else route['name'] %}
-      {% set rate = route.rate_limit_per_minute if route.rate_limit_per_minute is defined else 60 %}
-      {% set auth_label = "anonymous" if is_anonymous else "API key required" %}
-      {% set status_label = "Enabled" if is_enabled else "Disabled" %}
+    <section id="ai">
+      <h2>OpenAI 兼容接口</h2>
+      <div class="card flush"><div class="table-wrap"><table>
+        <thead><tr><th>接口</th><th>用途</th><th>权限</th></tr></thead>
+        <tbody>
+          <tr><td><code>GET /v1/models</code></td><td>当前密钥可用的模型列表（免费）</td><td><code>models:read</code></td></tr>
+          <tr><td><code>POST /v1/chat/completions</code></td><td>messages 格式聊天，支持 <code>stream: true</code></td><td><code>chat:completions</code></td></tr>
+          <tr><td><code>POST /v1/responses</code></td><td>Responses 协议，支持 SSE；不支持远端会话检索</td><td><code>responses:create</code></td></tr>
+        </tbody>
+      </table></div></div>
+      <p class="section-note">支持文本与客户端函数工具；单次输出默认 2048、上限 8192 token。流式请求可加 <code>stream_options.include_usage</code> 获取最终用量。每个响应带 <code>X-Request-ID</code>，排查问题时请一并提供。模型用途与配置示例见 <a href="/models">模型线路</a>。</p>
+    </section>
 
-      <article class="route-card {% if not is_enabled %}route-disabled{% endif %}">
-        <div class="route-card-top">
-          <div>
-            <h2>{{ name }}</h2>
-            <p class="muted">{{ method }} /api/public/v1/{{ public_path }}</p>
-            <p class="route-state-line">
-              <span class="badge {{ 'badge-success' if is_enabled else 'badge-muted' }}">{{ status_label }} · {{ auth_label }}</span>
-            </p>
-          </div>
-        </div>
+    <section id="billing">
+      <h2>积分与计费</h2>
+      <p>生成调用按 OpenAI 官方 Standard 单价结算：<strong>¥1 = 100 积分</strong>，<strong>$1 = 720 积分</strong>，精确到六位小数。</p>
+      <ul>
+        <li>每次生成先按输入估算和输出上限冻结预算，完成后按上游回报的真实 token 结算，多退少补。</li>
+        <li>缓存命中与长上下文使用对应价格档位；读取模型目录不收费。</li>
+        <li>余额不足时返回 <code>402</code>；缺少可靠用量的请求只保留本笔冻结并进入待核。</li>
+        <li>兑换码、管理员加分与在线充值（开放后）共用同一余额。</li>
+      </ul>
+      <a class="btn sm" href="/pricing">查看价格与估算器</a>
+    </section>
 
-        {% if not is_enabled %}
-          <div class="route-warning">
-            This route is documented but not currently enabled. Calls return
-            <code>route_disabled</code> until an admin enables it.
-          </div>
-        {% endif %}
+    <section id="errors">
+      <h2>错误码</h2>
+      <div class="card flush"><div class="table-wrap"><table>
+        <thead><tr><th>状态码</th><th>AI 接口 <span class="muted">error.type / code</span></th><th>业务接口 <span class="muted">error</span></th><th>说明</th></tr></thead>
+        <tbody>
+          <tr><td class="num">400</td><td><code>invalid_request_error</code></td><td>—</td><td>JSON、模型 ID 或参数与协议不一致；请求体过大。</td></tr>
+          <tr><td class="num">401</td><td><code>authentication_error</code></td><td><code>unauthorized</code></td><td>密钥缺失、无效或已撤销。</td></tr>
+          <tr><td class="num">402</td><td><code>insufficient_credits</code></td><td>—</td><td>可用积分不足，兑换后重试。</td></tr>
+          <tr><td class="num">403</td><td><code>permission_error</code></td><td><code>forbidden</code> · <code>key_expired</code></td><td>缺少模型或协议权限、密钥过期或账户停用。</td></tr>
+          <tr><td class="num">404</td><td><code>endpoint_not_found</code></td><td><code>route_disabled</code></td><td>接口不存在或未启用。</td></tr>
+          <tr><td class="num">405</td><td><code>method_not_allowed</code></td><td><code>method_not_allowed</code></td><td>请求方法不匹配。</td></tr>
+          <tr><td class="num">409</td><td>—</td><td>—</td><td>账户存在已知欠费或支付待核，暂停生成。</td></tr>
+          <tr><td class="num">429</td><td><code>rate_limit_error</code></td><td><code>rate_limited</code></td><td>超过每分钟、每日或每月请求配额。</td></tr>
+          <tr><td class="num">502 / 504</td><td><code>upstream_error</code> · <code>upstream_timeout</code></td><td><code>upstream_error</code></td><td>上游异常、超时或响应过大。</td></tr>
+        </tbody>
+      </table></div></div>
+      <p class="section-note muted">流式连接建立后，错误也可能出现在 SSE 事件中；以最终事件和 <code>[DONE]</code> 判断是否完成。</p>
+    </section>
 
-        <div class="route-meta">
-          <div>
-            <span class="meta-label">Method</span>
-            <span class="meta-value">{{ method }}</span>
-          </div>
-          <div>
-            <span class="meta-label">Required scope</span>
-            <span class="meta-value"><code>{{ scope or "none" }}</code></span>
-          </div>
-          <div>
-            <span class="meta-label">Auth</span>
-            <span class="meta-value">{{ auth_label }}</span>
-          </div>
-          <div>
-            <span class="meta-label">Rate limit</span>
-            <span class="meta-value">{{ rate or 60 }}/min per key</span>
-          </div>
-        </div>
-
-        <h3>Curl examples</h3>
-        <div class="code-block">
-<pre><code>curl -H "Authorization: Bearer lapi_xxx" \
-  https://api.luomo.moe/api/public/v1/{{ public_path }}</code></pre>
-        </div>
-        <div class="code-block">
-<pre><code>curl -H "X-API-Key: lapi_xxx" \
-  https://api.luomo.moe/api/public/v1/{{ public_path }}</code></pre>
-        </div>
-
-        <details open>
-          <summary>Error responses</summary>
-          <div class="code-block">
-<pre><code>401 {"error":"unauthorized","message":"Invalid or missing API key."}
-403 {"error":"forbidden","message":"API key does not have the required scope."}
-404 {"error":"route_disabled","message":"This route is documented but not currently enabled."}
-405 {"error":"method_not_allowed","message":"This route only allows {{ method }}."}
-429 {"error":"rate_limited","message":"API key rate limit exceeded."}
-502 {"error":"upstream_error","message":"Upstream API request failed."}</code></pre>
-          </div>
-        </details>
-      </article>
-    {% endfor %}
-  {% else %}
-    <article class="route-card route-disabled">
-      <div class="route-card-top">
-        <div>
-          <h2>No documented routes</h2>
-          <p class="muted">Public gateway routes will appear here after admin review.</p>
-        </div>
+    <section id="endpoints" aria-label="业务接口目录">
+      <h2>业务接口</h2>
+      <p>业务服务统一经过 <code>/api/public/v1/{route}</code>，按 scope 授权。</p>
+      <div class="docs-tools">
+        <label><span class="sr-only">搜索接口名称、路径或权限</span><input id="route-search" type="search" placeholder="搜索名称、路径或权限…" autocomplete="off" aria-controls="endpoint-list"></label>
+        <button type="button" class="filter-chip" data-route-filter="all" aria-pressed="true">全部</button>
+        <button type="button" class="filter-chip" data-route-filter="enabled" aria-pressed="false">已启用</button>
+        <button type="button" class="filter-chip" data-route-filter="disabled" aria-pressed="false">未启用</button>
       </div>
-    </article>
-  {% endif %}
+      <p class="muted small" id="route-count" role="status">{{ routes|length }} 个公开接口</p>
+      <div id="endpoint-list">
+        {% for route in routes %}
+        <article class="endpoint" id="endpoint-{{ route.id }}" data-status="{{ 'enabled' if route.enabled else 'disabled' }}" data-search="{{ route.name }} {{ route.public_path }} {{ route.target_method }} {{ route.required_scope or '' }}">
+          <div class="endpoint-line"><span class="method {{ route.target_method|lower }}">{{ route.target_method }}</span><h3>{{ route.name }}</h3><span class="badge {{ 'ok' if route.enabled else 'off' }}">{{ '已启用' if route.enabled else '未启用' }}</span></div>
+          <code class="endpoint-path">/api/public/v1/{{ route.public_path }}</code>
+          <div class="endpoint-meta"><span>认证：{{ '匿名可用' if route.allow_anonymous else 'API Key' }}</span><span>权限：<code>{{ route.required_scope or '无' }}</code></span></div>
+          {% if not route.enabled %}<p class="notice warn small">此接口已收录文档但尚未启用，调用会返回 <code>route_disabled</code>。</p>{% endif %}
+          <div class="screen">
+            <div class="screen-bar"><span class="title">REQUEST</span><button class="copy" type="button" data-copy-target="request-{{ route.id }}" aria-label="复制 {{ route.name }} 请求示例">复制</button></div>
+<pre id="request-{{ route.id }}">curl --request {{ route.target_method }} \
+  'https://api.luomo.moe/api/public/v1/{{ route.public_path }}'{% if not route.allow_anonymous %} \
+  --header "Authorization: Bearer $LUOMO_API_KEY"{% endif %}{% if route.target_method in ['POST', 'PUT', 'PATCH'] %} \
+  --header 'Content-Type: application/json' \
+  --data '{}'{% endif %}</pre>
+          </div>
+          {% if route.target_method in ['POST', 'PUT', 'PATCH'] %}<p class="small muted section-note"><code>{}</code> 是请求体占位符，请按目标服务要求填写。</p>{% endif %}
+        </article>
+        {% endfor %}
+        <div class="empty-state" id="route-empty" {% if routes %}hidden{% endif %}><strong>没有找到匹配的接口</strong>试试其他关键词，或切换到“全部”。</div>
+      </div>
+    </section>
+  </article>
 </div>
 {% endblock %}

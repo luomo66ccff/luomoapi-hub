@@ -1,74 +1,30 @@
 {% extends "base.html" %}
-
-{% block title %}API Keys · LuomoAPI Hub{% endblock %}
-
+{% block title %}全部密钥 · LuomoAPI{% endblock %}
 {% block content %}
-<div class="page-header">
-  <div>
-    <div class="eyebrow">Admin Console</div>
-    <h1>API Keys</h1>
-    <p class="page-subtitle">
-      Review issued API keys, scopes, quotas, usage time, and revoke compromised keys.
-      Full API keys are never displayed here.
-    </p>
-  </div>
-</div>
-
-<section class="card table-wrap">
-  <table>
-    <thead>
-      <tr>
-        <th>Key</th>
-        <th>Owner</th>
-        <th>Status</th>
-        <th>Scopes</th>
-        <th>Allowed routes</th>
-        <th>Quota</th>
-        <th>Last used</th>
-        <th>Action</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for item in keys %}
-      <tr>
-        <td>
-          <strong>{{ item.name }}</strong><br>
-          <span class="muted">{{ item.key_prefix }}</span>
-        </td>
-        <td>
-          {{ item.username or "—" }}<br>
-          <span class="muted">{{ item.email or "—" }}</span>
-        </td>
-        <td>
-          <span class="badge {{ 'success' if item.status == 'active' else 'muted' }}">
-            {{ item.status }}
-          </span>
-        </td>
-        <td><code>{{ item.scopes or "—" }}</code></td>
-        <td><code>{{ item.allowed_routes or "—" }}</code></td>
-        <td>
-          {{ item.rate_limit_per_minute or 0 }}/min<br>
-          <span class="muted">{{ item.daily_quota or 0 }}/day</span>
-        </td>
-        <td>{{ item.last_used_at or "—" }}</td>
-        <td>
-          <form method="post" action="/admin/api-keys/{{ item.id }}/status" class="inline-form">
-            {% if item.status == "active" %}
-              <input type="hidden" name="status_value" value="revoked">
-              <button class="btn ghost compact danger-soft" type="submit">Revoke</button>
-            {% else %}
-              <input type="hidden" name="status_value" value="active">
-              <button class="btn ghost compact" type="submit">Reactivate</button>
-            {% endif %}
-          </form>
-        </td>
-      </tr>
-      {% else %}
-      <tr>
-        <td colspan="8" class="empty">No API keys issued yet.</td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
-</section>
+<div class="page-head"><div><p class="eyebrow">All tickets · 全部密钥</p><h1>全部密钥</h1><p class="lead">查看权限、模型策略与配额，按需调整或撤销。这里不展示完整密钥。</p></div></div>
+<div class="card flush"><div class="table-wrap"><table>
+  <thead><tr><th>密钥</th><th>持有人</th><th>状态</th><th>权限范围</th><th>业务路由</th><th>频率 / 配额</th><th>最近使用</th><th>操作</th></tr></thead>
+  <tbody>
+  {% for item in keys %}
+  <tr>
+    <td><strong>{{ item.name }}</strong><span class="sub mono">{{ item.key_prefix }}</span></td>
+    <td>{{ item.username or '—' }}<span class="sub">{{ item.email or '—' }}</span></td>
+    <td><span class="badge {{ item.status|tone }}">{{ item.status|label }}</span></td>
+    <td><code>{{ item.scopes or '—' }}</code></td>
+    <td><code>{{ item.allowed_routes or '—' }}</code></td>
+    <td class="num small">{{ item.rate_limit_per_minute or '不限' }}/分<span class="sub">{{ item.daily_quota or '不限' }}/日 · {{ item.monthly_quota or '不限' }}/月<br>{{ item.expires_at|utc if item.expires_at else '不过期' }}</span></td>
+    <td class="num small">{{ item.last_used_at|utc }}</td>
+    <td><div class="cell-actions">
+      <a class="btn sm" href="/admin/ai-keys/{{ item.id }}">模型与配额</a>
+      <form method="post" action="/admin/api-keys/{{ item.id }}/status" {% if item.status == 'active' %}data-confirm="确定撤销「{{ item.name }}」吗？使用它的应用会立即失效。"{% endif %}>
+        {% if item.status == 'active' %}<input type="hidden" name="status_value" value="revoked"><button class="btn danger sm" type="submit">撤销</button>
+        {% else %}<input type="hidden" name="status_value" value="active"><button class="btn ghost sm" type="submit">重新启用</button>{% endif %}
+      </form>
+    </div></td>
+  </tr>
+  {% else %}
+  <tr><td colspan="8" class="empty">还没有签发任何密钥。</td></tr>
+  {% endfor %}
+  </tbody>
+</table></div></div>
 {% endblock %}

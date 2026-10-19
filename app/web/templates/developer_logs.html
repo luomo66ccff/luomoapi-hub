@@ -1,52 +1,26 @@
 {% extends "base.html" %}
-
-{% block title %}My Usage Logs · LuomoAPI Hub{% endblock %}
-
+{% from "_macros.html" import roundel %}
+{% block title %}网关记录 · LuomoAPI{% endblock %}
 {% block content %}
-<div class="page-header">
-  <div>
-    <div class="eyebrow">Developer Console</div>
-    <h1>My Usage Logs</h1>
-    <p class="page-subtitle">
-      Recent gateway calls made with your API keys.
-    </p>
-  </div>
+<div class="page-head">
+  <div><p class="eyebrow">Ride log · 网关记录</p><h1>网关记录</h1><p class="lead">你的密钥最近 100 次经过网关的请求，包括 AI 接口与业务接口。不保存请求正文。</p></div>
+  <div class="actions"><a class="btn" href="/developer/usage">AI 用量与扣费</a></div>
 </div>
-
-<section class="card table-wrap">
-  <table>
-    <thead>
-      <tr>
-        <th>Time</th>
-        <th>Route</th>
-        <th>Status</th>
-        <th>Latency</th>
-        <th>Result</th>
-        <th>Error</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for log in logs %}
-      <tr>
-        <td>{{ log.created_at }}</td>
-        <td><code>{{ log.public_path }}</code></td>
-        <td>{{ log.status_code or "—" }}</td>
-        <td>{{ log.response_time_ms or "—" }} ms</td>
-        <td>
-          {% if log.success %}
-            <span class="badge badge-success">success</span>
-          {% else %}
-            <span class="badge badge-muted">failed</span>
-          {% endif %}
-        </td>
-        <td>{{ log.error_summary or "—" }}</td>
-      </tr>
-      {% else %}
-      <tr>
-        <td colspan="6" class="empty">No usage logs yet.</td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
-</section>
+<div class="card flush"><div class="table-wrap"><table>
+  <thead><tr><th>时间（UTC）</th><th>模型 / 接口</th><th>状态</th><th class="right">耗时</th><th>结果</th><th>错误</th></tr></thead>
+  <tbody>
+  {% for log in logs %}
+  <tr>
+    <td class="num">{{ log.created_at|utc }}</td>
+    <td>{% if log.model %}<div class="cell-model">{{ roundel(log.model, 'sm') }}<code>{{ log.model }}</code></div>{% else %}<code>{{ log.public_path }}</code>{% endif %}</td>
+    <td class="num">{{ log.status_code or '—' }}</td>
+    <td class="num right">{{ log.response_time_ms if log.response_time_ms is not none else '—' }} ms</td>
+    <td><span class="badge {{ 'ok' if log.success else 'danger' }}">{{ '成功' if log.success else '失败' }}</span></td>
+    <td class="small">{{ log.error_summary or '—' }}</td>
+  </tr>
+  {% else %}
+  <tr><td colspan="6" class="empty">还没有网关记录。</td></tr>
+  {% endfor %}
+  </tbody>
+</table></div></div>
 {% endblock %}

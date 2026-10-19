@@ -1,6 +1,9 @@
 {% extends "base.html" %}
-{% block title %}Logs - LuomoAPI Hub{% endblock %}
+{% block title %}测试日志 · LuomoAPI{% endblock %}
 {% block content %}
-<section class="page-head"><div><p class="eyebrow">Request Logs</p><h1>Logs</h1><p class="muted">Recent tester and gateway request records with redacted previews.</p></div></section>
-<section class="card table-wrap"><table><thead><tr><th>Time</th><th>API</th><th>Method</th><th>URL</th><th>Status</th><th>Time</th><th>Success</th><th>Error</th></tr></thead><tbody>{% for log in logs %}<tr><td>{{ log.created_at }}</td><td>{{ log.api_name or '—' }}</td><td>{{ log.method }}</td><td>{{ log.url_masked }}</td><td>{{ log.status_code or 'ERR' }}</td><td>{{ log.response_time_ms or '—' }} ms</td><td><span class="badge {{ 'success' if log.success else 'warning' }}">{{ 'yes' if log.success else 'no' }}</span></td><td>{{ log.error_summary or '—' }}</td></tr>{% else %}<tr><td colspan="8">No request logs yet.</td></tr>{% endfor %}</tbody></table></section>
+<div class="page-head"><div><p class="eyebrow">Test log · 测试日志</p><h1>测试日志</h1><p class="lead">接口测试台最近 100 次请求，地址与预览均已脱敏。</p></div><div class="actions"><a class="btn" href="/tester">接口测试</a></div></div>
+<div class="card flush"><div class="table-wrap"><table>
+  <thead><tr><th>时间（UTC）</th><th>API</th><th>方法</th><th>地址</th><th>状态</th><th class="right">耗时</th><th>结果</th><th>错误</th></tr></thead>
+  <tbody>{% for log in logs %}<tr><td class="num">{{ log.created_at|utc }}</td><td>{{ log.api_name or '—' }}</td><td><span class="method {{ log.method|lower }}">{{ log.method }}</span></td><td><code>{{ log.url_masked }}</code></td><td class="num">{{ log.status_code or 'ERR' }}</td><td class="num right">{{ log.response_time_ms if log.response_time_ms is not none else '—' }} ms</td><td><span class="badge {{ 'ok' if log.success else 'danger' }}">{{ '成功' if log.success else '失败' }}</span></td><td class="small">{{ log.error_summary or '—' }}</td></tr>{% else %}<tr><td colspan="8" class="empty">暂无测试请求。</td></tr>{% endfor %}</tbody>
+</table></div></div>
 {% endblock %}

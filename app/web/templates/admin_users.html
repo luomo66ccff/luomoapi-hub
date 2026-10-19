@@ -1,53 +1,37 @@
 {% extends "base.html" %}
-{% block title %}Users - LuomoAPI Hub{% endblock %}
+{% block title %}用户 · LuomoAPI{% endblock %}
 {% block content %}
-<section class="page-head">
-  <div>
-    <p class="eyebrow">Admin</p>
-    <h1>Users</h1>
-    <p class="muted">Registered developers must verify email before activation.</p>
-  </div>
-</section>
-<section class="card table-wrap">
-  <table>
-    <thead>
-      <tr>
-        <th>User</th>
-        <th>Email</th>
-        <th>Role</th>
-        <th>Status</th>
-        <th>Email verification</th>
-        <th>Keys</th>
-        <th>Reason</th>
-        <th>Action</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for item in users %}
-      <tr>
-        <td>{{ item.username }}</td>
-        <td>{{ item.email }}</td>
-        <td>{{ item.role }}</td>
-        <td><span class="badge {{ 'success' if item.status == 'active' else 'warning' if item.status == 'pending' else 'muted' }}">{{ item.status }}</span></td>
-        <td><span class="badge {{ 'success' if item.email_verified else 'muted' }}">{{ 'verified' if item.email_verified else 'pending' }}</span></td>
-        <td>{{ item.key_count }}</td>
-        <td>{{ item.usage_reason or '-' }}</td>
-        <td>
-          <form class="inline-form" method="post" action="/admin/users/{{ item.id }}/status">
-            <select name="status_value">
-              <option value="pending" {{ 'selected' if item.status == 'pending' else '' }}>pending</option>
-              <option value="active" {{ 'selected' if item.status == 'active' else '' }} {% if not item.email_verified and item.role != 'admin' %}disabled{% endif %}>active</option>
-              <option value="suspended" {{ 'selected' if item.status == 'suspended' else '' }}>suspended</option>
-              <option value="disabled" {{ 'selected' if item.status == 'disabled' else '' }}>disabled</option>
-            </select>
-            <button class="btn ghost compact" type="submit">Save</button>
-          </form>
-        </td>
-      </tr>
+<div class="page-head"><div><p class="eyebrow">Riders · 用户</p><h1>用户</h1><p class="lead">新注册账户直接启用，邮箱验证独立进行。暂停或停用会让该账户的密钥立即失效。</p></div></div>
+<div class="card flush"><div class="table-wrap"><table>
+  <thead><tr><th>用户</th><th>角色</th><th>状态</th><th>邮箱验证</th><th class="right">密钥</th><th>使用场景</th><th>调整状态</th></tr></thead>
+  <tbody>
+  {% for item in users %}
+  <tr>
+    <td><strong>{{ item.username }}</strong><span class="sub">{{ item.email }}</span></td>
+    <td>{{ item.role|label }}</td>
+    <td><span class="badge {{ item.status|tone }}">{{ '已启用（历史待审）' if item.status == 'pending' else item.status|label }}</span></td>
+    <td><span class="badge {{ 'ok' if item.email_verified else 'off' }}">{{ '已验证' if item.email_verified else '未验证' }}</span></td>
+    <td class="num right">{{ item.key_count }}</td>
+    <td class="small">{{ item.usage_reason or '—' }}</td>
+    <td>
+      {% if item.id == user.id %}<span class="muted small">当前账户</span>
       {% else %}
-      <tr><td colspan="8" class="empty">No users.</td></tr>
-      {% endfor %}
-    </tbody>
-  </table>
-</section>
+      <form class="inline-row compact" method="post" action="/admin/users/{{ item.id }}/status">
+        <label class="sr-only" for="status-{{ item.id }}">{{ item.username }} 的状态</label>
+        <select id="status-{{ item.id }}" name="status_value">
+          {% if item.status == 'pending' %}<option value="pending" selected>已启用（历史待审）</option>{% endif %}
+          <option value="active" {{ 'selected' if item.status == 'active' else '' }}>已启用</option>
+          <option value="suspended" {{ 'selected' if item.status == 'suspended' else '' }}>已暂停</option>
+          <option value="disabled" {{ 'selected' if item.status == 'disabled' else '' }}>已停用</option>
+        </select>
+        <button class="btn sm" type="submit">保存</button>
+      </form>
+      {% endif %}
+    </td>
+  </tr>
+  {% else %}
+  <tr><td colspan="7" class="empty">还没有用户。</td></tr>
+  {% endfor %}
+  </tbody>
+</table></div></div>
 {% endblock %}

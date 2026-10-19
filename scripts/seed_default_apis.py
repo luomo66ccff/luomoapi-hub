@@ -33,6 +33,20 @@ DEFAULT_APIS = [
         "tags": "ops,brain,core",
         "endpoints": [("Health", "GET", "/health")],
     },
+    {
+        "name": "CodexProxy",
+        "slug": "codexproxy",
+        "base_url": settings.codexproxy_base_url,
+        "auth_type": "bearer",
+        "secret_ref": "CODEXPROXY_API_KEY",
+        "description": "OpenAI-compatible gateway for Codex and other CLI model subscriptions",
+        "tags": "ai,openai,codex,proxy",
+        "endpoints": [
+            ("Models", "GET", "/v1/models"),
+            ("Chat completions", "POST", "/v1/chat/completions"),
+            ("Responses", "POST", "/v1/responses"),
+        ],
+    },
 ]
 DEFAULT_SECRETS = [
     ("AstrBot API Key", "ASTRBOT_API_KEY"),
@@ -40,6 +54,7 @@ DEFAULT_SECRETS = [
     ("LuomoCore API Token", "LUOMOCORE_API_TOKEN"),
     ("GitHub Token", "GITHUB_TOKEN"),
     ("Cloudflare API Token", "CLOUDFLARE_API_TOKEN"),
+    ("CodexProxy API Key", "CODEXPROXY_API_KEY"),
 ]
 DEFAULT_PUBLIC_ROUTES = [
     ("LuomoCore health", "luomocore/health", "luomocore", "GET", "/health", "luomocore:health"),
@@ -52,6 +67,20 @@ def seed() -> None:
     init_db()
     now = now_iso()
     with connect() as conn:
+        legacy_api = conn.execute("SELECT id FROM apis WHERE slug='cliproxy'").fetchone()
+        current_api = conn.execute("SELECT id FROM apis WHERE slug='codexproxy'").fetchone()
+        if legacy_api and not current_api:
+            conn.execute(
+                "UPDATE apis SET name='CodexProxy', slug='codexproxy', updated_at=? WHERE id=?",
+                (now, legacy_api["id"]),
+            )
+        legacy_secret = conn.execute("SELECT id FROM secrets WHERE key='CLIPROXY_API_KEY'").fetchone()
+        current_secret = conn.execute("SELECT id FROM secrets WHERE key='CODEXPROXY_API_KEY'").fetchone()
+        if legacy_secret and not current_secret:
+            conn.execute(
+                "UPDATE secrets SET name='CodexProxy API Key', key='CODEXPROXY_API_KEY', updated_at=? WHERE id=?",
+                (now, legacy_secret["id"]),
+            )
         for item in DEFAULT_APIS:
             existing = conn.execute("SELECT id FROM apis WHERE slug = ?", (item["slug"],)).fetchone()
             if existing:

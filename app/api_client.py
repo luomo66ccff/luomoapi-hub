@@ -57,6 +57,10 @@ def validate_url(url: str) -> None:
     host = parts.hostname
     if not host:
         raise TesterError("URL host is missing.")
+    if parts.username or parts.password:
+        raise TesterError("URL credentials are not allowed.")
+    if parts.scheme == "http" and host.lower() == "codex-proxy" and (parts.port or 80) == 8317:
+        return
     if host.lower() in {"localhost", "0.0.0.0"}:
         raise TesterError("Localhost and 0.0.0.0 are blocked.")
     try:
@@ -90,6 +94,9 @@ def apply_saved_auth(headers: dict, api_row) -> None:
 
 def send_test_request(api_row, method: str, path: str, headers_text: str, query_text: str,
                       body_text: str, use_saved_auth: bool) -> TestResult:
+    from app.credit_pricing import protected_ai_target
+    if protected_ai_target(str(api_row["base_url"]), path):
+        raise TesterError("AI 生成需要使用积分计费入口，请前往 AI 在线试用并使用个人 API 密钥。")
     method = method.upper()
     if method not in ALLOWED_METHODS:
         raise TesterError("Unsupported HTTP method.")

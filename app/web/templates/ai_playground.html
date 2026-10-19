@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}在线试用 · LuomoAPI{% endblock %}
+{% block head_extra %}<script src="{{ asset('ai.js') }}" defer></script>{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><p class="eyebrow">Test ride · 在线试用</p><h1>先试一句，再接进应用</h1><p class="lead">用你自己的密钥发送真实的 Chat Completions 请求，会按官方标准价消耗积分。密钥只留在当前页面，离开即清除。</p></div>
+  <div class="actions"><a class="btn" href="/developer/keys">领取密钥</a><a class="btn ghost" href="/developer/credits">余额</a></div>
+</div>
+<div class="playground">
+  <section class="card">
+    <form id="playground-form" class="form" autocomplete="off">
+      <label class="field">API Key<input id="play-key" class="mono" type="password" required placeholder="lapi_…" autocomplete="off" spellcheck="false"></label>
+      <div class="actions"><button class="btn sm" type="button" id="load-models">读取这把密钥可用的模型</button></div>
+      <p id="model-load-status" class="muted small" role="status"></p>
+      <label class="field">模型 ID<input id="play-model" class="mono" list="allowed-models" value="gpt-6-luna" required autocomplete="off" spellcheck="false"></label>
+      <datalist id="allowed-models"></datalist>
+      <label class="field">提示词<textarea id="play-prompt" rows="6" maxlength="8000" required placeholder="用一句话介绍你自己。"></textarea></label>
+      <label class="check"><input type="checkbox" id="play-stream" checked> 流式输出</label>
+      <div class="actions"><button id="play-send" class="btn primary" type="submit">发送请求 <span class="arrow" aria-hidden="true">→</span></button><button id="play-stop" class="btn" type="button" disabled>停止</button><button id="play-clear" class="btn ghost" type="button">清空</button></div>
+    </form>
+  </section>
+  <section class="screen">
+    <div class="screen-bar"><span class="title">RESPONSE</span><span id="play-status" class="play-status" role="status" aria-live="polite">等待请求</span></div>
+    <pre id="play-output" class="output" tabindex="0"></pre>
+    <div class="output-status"><span id="play-meta"></span><span>纯文本显示 · 不执行代码</span></div>
+  </section>
+</div>
+<p class="muted small section-note">单轮文本聊天。结果与扣费可在 <a href="/developer/usage">AI 用量</a> 中按请求 ID 核对。</p>
+{% endblock %}

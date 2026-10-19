@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}密钥策略 · LuomoAPI{% endblock %}
+{% block content %}
+<div class="page-head"><div><p class="eyebrow">Ticket rules · 密钥策略</p><h1>{{ key.name }}</h1><p class="lead"><code>{{ key.key_prefix }}</code> · <span class="badge {{ key.status|tone }}">{{ key.status|label }}</span> · 只修改这一把密钥，保存后立即生效。</p></div><div class="actions"><a class="btn" href="/admin/api-keys">返回密钥列表</a></div></div>
+{% if saved %}<div class="notice success" role="status">策略已保存。</div>{% endif %}
+<section class="card narrow-card">
+  <form class="form" method="post">
+    <label class="field">协议与业务权限<input name="scopes" class="mono" value="{{ key.scopes or '' }}"><small>AI：models:read, chat:completions, responses:create。撤去对应权限即可禁止该协议；已有 codexproxy:use 加 codexproxy/* 的旧授权仍覆盖三项协议。</small></label>
+    <fieldset><legend>模型策略</legend>
+      <label class="check"><input type="radio" name="model_policy" value="allowlist" {{ 'checked' if key.model_policy == 'allowlist' }}> 仅允许下方模型</label>
+      <label class="check"><input type="radio" name="model_policy" value="all" {{ 'checked' if key.model_policy == 'all' }}> 允许所有模型（包括未来新增）</label>
+    </fieldset>
+    <label class="field">模型 ID（逗号或换行分隔）<textarea name="models" class="mono" rows="5">{{ key.models|join('\n') }}</textarea><small>使用白名单时，空列表表示没有任何模型权限。<a href="/models">查看模型目录</a>。</small></label>
+    <div class="form two">
+      <label class="field">每分钟请求数<input type="number" name="rate_limit_per_minute" min="0" value="{{ key.rate_limit_per_minute }}" required></label>
+      <label class="field">每日请求数<input type="number" name="daily_quota" min="0" value="{{ key.daily_quota }}" required></label>
+      <label class="field">每月请求数<input type="number" name="monthly_quota" min="0" value="{{ key.monthly_quota }}" required><small>0 表示不限；失败与取消也计入次数。</small></label>
+      <label class="field">有效期（UTC / ISO 时间）<input name="expires_at" class="mono" value="{{ key.expires_at or '' }}" placeholder="2026-12-31T23:59:59+00:00"><small>留空表示不过期。</small></label>
+    </div>
+    <div class="actions"><button type="submit" class="btn primary">保存这把密钥的策略</button></div>
+  </form>
+</section>
+{% endblock %}

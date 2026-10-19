@@ -1,28 +1,33 @@
 {% extends "base.html" %}
-{% block title %}APIs - LuomoAPI Hub{% endblock %}
+{% block title %}上游 API · LuomoAPI{% endblock %}
 {% block content %}
-<section class="page-head"><div><p class="eyebrow">API Catalog</p><h1>APIs</h1><p class="muted">Registered upstream APIs and their auth status.</p></div></section>
-<section class="api-grid">
+<div class="page-head"><div><p class="eyebrow">Depots · 上游 API</p><h1>上游 API</h1><p class="lead">已登记的上游服务与认证方式。凭据只以环境变量名引用，不在页面展示。</p></div><div class="actions"><a class="btn" href="/tester">接口测试</a></div></div>
+<div class="grid three">
   {% for api in apis %}
-  <article class="card api-card">
-    <div class="card-head"><h2><a href="/apis/{{ api.id }}">{{ api.name }}</a></h2><span class="badge {{ 'success' if api.enabled else 'muted' }}">{{ 'enabled' if api.enabled else 'disabled' }}</span></div>
-    <dl class="kv"><div><dt>Base URL</dt><dd>{{ api.base_url }}</dd></div><div><dt>Auth</dt><dd>{{ api.auth_type }}</dd></div><div><dt>Tags</dt><dd>{{ api.tags or '—' }}</dd></div></dl>
-    <p class="muted">{{ api.description or 'No description.' }}</p>
-  </article>
-  {% else %}<div class="empty card">No APIs registered.</div>{% endfor %}
-</section>
-<section class="card form-card">
-  <h2>Add API</h2>
-  <form class="form-grid" method="post" action="/apis">
-    <label><span>Name</span><input name="name" required></label>
-    <label><span>Slug</span><input name="slug" required></label>
-    <label class="wide"><span>Base URL</span><input name="base_url" placeholder="https://example.com" required></label>
-    <label><span>Auth Type</span><select name="auth_type">{% for value in auth_types %}<option value="{{ value }}">{{ value }}</option>{% endfor %}</select></label>
-    <label><span>Secret Ref</span><input name="secret_ref" placeholder="ENV_VAR_NAME"></label>
-    <label><span>Tags</span><input name="tags" placeholder="ops,bot"></label>
-    <label class="wide"><span>Description</span><textarea name="description"></textarea></label>
-    <label class="check"><input type="checkbox" name="enabled" checked> Enabled</label>
-    <button class="btn primary wide" type="submit">Create API</button>
-  </form>
-</section>
+  <a class="card card-link api-card" href="/apis/{{ api.id }}">
+    <div class="block-title"><h2>{{ api.name }}</h2><span class="badge {{ 'ok' if api.enabled else 'off' }}">{{ '已启用' if api.enabled else '已停用' }}</span></div>
+    <code class="endpoint-path">{{ api.base_url }}</code>
+    <dl class="kv-row"><div><dt>认证</dt><dd>{{ api.auth_type }}</dd></div><div><dt>标签</dt><dd>{{ api.tags or '—' }}</dd></div></dl>
+    <p class="muted small">{{ api.description or '暂无描述。' }}</p>
+  </a>
+  {% else %}
+  <div class="card empty-state"><strong>还没有登记上游 API</strong></div>
+  {% endfor %}
+</div>
+<details class="more section-gap">
+  <summary>登记上游 API</summary>
+  <div class="card-body">
+    <form class="form two" method="post" action="/apis">
+      <label class="field">名称<input name="name" required></label>
+      <label class="field">标识<input name="slug" class="mono" required></label>
+      <label class="field wide">基础地址<input name="base_url" class="mono" placeholder="https://example.com" required></label>
+      <label class="field">认证方式<select name="auth_type">{% for value in auth_types %}<option value="{{ value }}">{{ value }}</option>{% endfor %}</select></label>
+      <label class="field">凭据环境变量<input name="secret_ref" class="mono" placeholder="ENV_VAR_NAME"></label>
+      <label class="field">标签<input name="tags" placeholder="ops,bot"></label>
+      <label class="field wide">描述<textarea name="description" rows="2"></textarea></label>
+      <label class="check wide"><input type="checkbox" name="enabled" checked> 启用</label>
+      <div class="wide actions"><button class="btn primary" type="submit">登记 API</button></div>
+    </form>
+  </div>
+</details>
 {% endblock %}

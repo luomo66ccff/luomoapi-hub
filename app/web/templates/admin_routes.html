@@ -1,79 +1,41 @@
 {% extends "base.html" %}
-
-{% block title %}Public Routes · LuomoAPI Hub{% endblock %}
-
+{% block title %}公共路由 · LuomoAPI{% endblock %}
 {% block content %}
-<div class="page-header">
-  <div>
-    <div class="eyebrow">Admin Gateway</div>
-    <h1>Public Routes</h1>
-    <p class="page-subtitle">
-      Enable or disable documented gateway routes. Keep sensitive upstream APIs disabled
-      until response shape and scopes are reviewed.
-    </p>
-  </div>
-</div>
-
-<section class="route-doc-grid">
+<div class="page-head"><div><p class="eyebrow">Branch lines · 公共路由</p><h1>公共路由</h1><p class="lead">业务接口经 <code>/api/public/v1/…</code> 对外开放。敏感上游在核对响应结构和 scope 之前保持停用。</p></div></div>
+<div class="card flush"><div class="table-wrap"><table>
+  <thead><tr><th>路由</th><th>上游</th><th>权限</th><th>文档 / 认证</th><th>状态</th><th>操作</th></tr></thead>
+  <tbody>
   {% for route in routes %}
-  <article class="route-card {% if not route.enabled %}route-disabled{% endif %}">
-    <div class="route-card-top">
-      <div>
-        <h2>{{ route.name }}</h2>
-        <p class="muted">{{ route.target_method }} /api/public/v1/{{ route.public_path }}</p>
-      </div>
-
-      {% if route.enabled %}
-        <span class="badge badge-success">Enabled</span>
-      {% else %}
-        <span class="badge badge-muted">Disabled</span>
-      {% endif %}
-    </div>
-
-    {% if not route.enabled %}
-    <div class="route-warning">
-      This route is documented but not currently enabled.
-    </div>
-    {% endif %}
-
-    <div class="route-meta">
-      <div>
-        <span class="meta-label">Target path</span>
-        <span class="meta-value"><code>{{ route.target_path }}</code></span>
-      </div>
-      <div>
-        <span class="meta-label">Required scope</span>
-        <span class="meta-value"><code>{{ route.required_scope or "—" }}</code></span>
-      </div>
-      <div>
-        <span class="meta-label">Docs</span>
-        <span class="meta-value">{{ "visible" if route.public_docs else "hidden" }}</span>
-      </div>
-      <div>
-        <span class="meta-label">Auth</span>
-        <span class="meta-value">{{ "anonymous" if route.allow_anonymous else "API key required" }}</span>
-      </div>
-    </div>
-
-    <form method="post" action="/admin/routes/{{ route.id }}/toggle" class="route-actions">
-      {% if route.enabled %}
-        <input type="hidden" name="enabled" value="0">
-        <button class="btn btn-secondary danger-soft" type="submit">
-          Disable route
-        </button>
-      {% else %}
-        <input type="hidden" name="enabled" value="1">
-        <button class="btn btn-primary" type="submit">
-          Enable route
-        </button>
-      {% endif %}
-    </form>
-  </article>
+  <tr>
+    <td><span class="method {{ route.target_method|lower }}">{{ route.target_method }}</span> <strong>{{ route.name }}</strong><span class="sub mono">/api/public/v1/{{ route.public_path }}</span></td>
+    <td>{{ route.api_name }}<span class="sub mono">{{ route.target_path }}</span></td>
+    <td><code>{{ route.required_scope or '—' }}</code></td>
+    <td class="small">{{ '文档可见' if route.public_docs else '文档隐藏' }}<span class="sub">{{ '匿名可用' if route.allow_anonymous else '需要 API Key' }}</span></td>
+    <td><span class="badge {{ 'ok' if route.enabled else 'off' }}">{{ '已启用' if route.enabled else '已停用' }}</span></td>
+    <td><form method="post" action="/admin/routes/{{ route.id }}/toggle" {% if route.enabled %}data-confirm="停用后调用将返回 route_disabled，确定停用「{{ route.name }}」吗？"{% endif %}>
+      {% if route.enabled %}<input type="hidden" name="enabled" value="0"><button class="btn danger sm" type="submit">停用</button>
+      {% else %}<input type="hidden" name="enabled" value="1"><button class="btn primary sm" type="submit">启用</button>{% endif %}
+    </form></td>
+  </tr>
   {% else %}
-  <article class="route-card route-disabled">
-    <h2>No public routes</h2>
-    <p class="muted">Create public gateway routes first.</p>
-  </article>
+  <tr><td colspan="6" class="empty">还没有公共路由。</td></tr>
   {% endfor %}
-</section>
+  </tbody>
+</table></div></div>
+
+<details class="more section-gap">
+  <summary>新增路由</summary>
+  <div class="card-body">
+    <form method="post" action="/admin/routes" class="form two">
+      <label class="field">名称<input name="name" required></label>
+      <label class="field">公开路径<input name="public_path" class="mono" placeholder="luomocore/health" required><small>挂在 /api/public/v1/ 之下。</small></label>
+      <label class="field">上游 API<select name="target_api_id" required>{% for api in apis %}<option value="{{ api.id }}">{{ api.name }} · {{ api.base_url }}</option>{% endfor %}</select></label>
+      <label class="field">方法<select name="target_method">{% for method in methods %}<option value="{{ method }}">{{ method }}</option>{% endfor %}</select></label>
+      <label class="field">上游路径<input name="target_path" class="mono" placeholder="/health" required></label>
+      <label class="field">所需权限（scope）<input name="required_scope" class="mono" placeholder="luomocore:health"></label>
+      <div class="wide checks"><label class="check"><input type="checkbox" name="enabled"> 立即启用</label><label class="check"><input type="checkbox" name="public_docs" checked> 在文档中显示</label><label class="check"><input type="checkbox" name="allow_anonymous"> 允许匿名访问</label></div>
+      <div class="wide actions"><button class="btn primary" type="submit">新增路由</button><span class="muted small">新路由默认停用，核对后再启用。</span></div>
+    </form>
+  </div>
+</details>
 {% endblock %}

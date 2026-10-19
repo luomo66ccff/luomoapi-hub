@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+{% block title %}积分 · LuomoAPI{% endblock %}
+{% block content %}
+{% set kinds = {'admin_credit':'管理员加分','code_redemption':'兑换码到账','usage_charge':'模型调用','payment':'支付到账','credit_freeze':'积分冻结','credit_release':'解除冻结'} %}
+<div class="page-head">
+  <div><p class="eyebrow">IC card · 积分</p><h1>积分</h1><p class="lead">¥1 = 100 积分；生成按官方美元价以每美元 720 积分换算，精确到六位小数。所有密钥共用这张卡。</p></div>
+  <div class="actions"><a class="btn" href="/developer/credits">刷新 <span class="arrow" aria-hidden="true">↻</span></a><a class="btn ghost" href="/pricing">价格表</a></div>
+</div>
+{% if error %}<div class="notice error" role="alert">{{ error }}</div>{% endif %}
+{% if message %}<div class="notice success" role="status">{{ message }}</div>{% endif %}
+{% if payment_reviews %}<div class="notice error" role="alert"><strong>账户存在支付待核记录，生成暂不可用</strong><p>请联系管理员并提供以下订单号核实。</p>{% for item in payment_reviews %}<p><code>{{ item.order_id }}</code> · {{ item.reason }}</p>{% endfor %}</div>{% endif %}
+{% if wallet.risk_units %}<div class="notice error"><strong>已知未覆盖费用 {{ wallet.risk_credits|credit }} 积分</strong><p>已从可用余额中扣除，请联系管理员核账。</p></div>{% endif %}
+
+<div class="wallet-grid">
+  <div class="ic-card">
+    <div class="ic-top"><div class="ic-brand">LUOMO IC<small>INTERCHANGE CREDITS</small></div><span class="chip-icon" aria-hidden="true"></span></div>
+    <div class="ic-balance"><span>可用积分</span><strong>{{ wallet.available_credits|credit }}</strong></div>
+    <div class="ic-foot"><span>总余额<b>{{ wallet.balance_credits|credit }}</b></span><span>冻结中<b>{{ wallet.reserved_credits|credit }}</b></span><span>持卡人<b>{{ user.username }}</b></span></div>
+  </div>
+  <div class="stack">
+    <section class="card">
+      <h2>兑换积分</h2>
+      <p class="muted">输入管理员提供的兑换码，到账后立即可用。</p>
+      <form method="post" action="/developer/credits/redeem" class="inline-row">
+        <label class="field grow" for="redeem-code"><span class="sr-only">兑换码</span><input id="redeem-code" name="code" class="mono" type="text" autocomplete="off" spellcheck="false" maxlength="100" placeholder="LM-…" required></label>
+        <button type="submit" class="btn primary">兑换</button>
+      </form>
+    </section>
+    <section class="card">
+      <h2>在线充值</h2>
+      {% if payment.enabled %}
+      <p class="muted">{{ payment.message or '按人民币金额充值，1 元 = 100 积分。支付渠道确认到账后才记入余额。' }}</p>
+      <form method="post" action="/developer/credits/topup" class="inline-row">
+        <input type="hidden" name="nonce" value="{{ payment.nonce }}">
+        <label class="field grow" for="amount-cny"><span class="sr-only">人民币金额（元）</span><input id="amount-cny" name="amount_cny" class="mono" type="number" step="0.01" min="1" max="1000" inputmode="decimal" placeholder="金额（元）" required></label>
+        <button type="submit" class="btn primary">前往支付</button>
+      </form>
+      {% else %}
+      <p class="muted">{{ payment.message or '在线支付方式尚未配置。当前可使用兑换码，或联系管理员人工加分。' }}</p>
+      <span class="badge off">支付待配置</span>
+      {% endif %}
+    </section>
+  </div>
+</div>
+
+{% if holds %}
+<div class="block-title section-gap"><h2>冻结与待核</h2></div>
+<p class="muted small">未知用量只保留本笔冻结，其他可用积分仍可继续生成。断流后系统会短暂尝试收齐最终用量并自动结算；已知未覆盖费用或支付待核会暂停生成，需要核账处理。</p>
+<div class="card flush"><div class="table-wrap"><table>
+  <thead><tr><th>调用</th><th class="right">冻结积分</th><th>状态</th><th>原因</th><th>时间（UTC）</th></tr></thead>
+  <tbody>{% for item in holds %}<tr><td class="num">#{{ item.usage_id }}</td><td class="num right">{{ item.amount_credits|credit }}</td><td><span class="badge {{ 'warn' if item.status == 'reconciliation_required' else 'off' }}">{{ '待人工核账' if item.status == 'reconciliation_required' else '进行中' }}</span></td><td class="small">{{ item.reason }}</td><td class="num">{{ item.created_at|utc }}</td></tr>{% endfor %}</tbody>
+</table></div></div>
+{% endif %}
+
+<div class="block-title section-gap"><h2>积分流水</h2><span class="muted small">最近 100 笔 · 冻结本身不扣费，实际扣费单独记账</span></div>
+<div class="card flush"><div class="table-wrap"><table>
+  <thead><tr><th>时间（UTC）</th><th>类型</th><th class="right">余额变动</th><th class="right">冻结变动</th><th class="right">变动后余额</th><th>说明</th></tr></thead>
+  <tbody>
+  {% for row in ledger %}
+  <tr>
+    <td class="num">{{ row.created_at|utc }}</td>
+    <td>{{ kinds.get(row.kind, row.kind) }}{% if row.usage_id %}<span class="sub mono">调用 #{{ row.usage_id }}</span>{% endif %}</td>
+    <td class="num right {{ 'plus' if row.delta_units > 0 else 'minus' if row.delta_units < 0 else '' }}">{{ '+' if row.delta_units > 0 else '' }}{{ row.delta_credits|credit }}</td>
+    <td class="num right muted">{{ '+' if row.delta_reserved_units > 0 else '' }}{{ row.delta_reserved_credits|credit }}</td>
+    <td class="num right">{{ row.balance_after_credits|credit }}</td>
+    <td class="small">{{ row.note }}</td>
+  </tr>
+  {% else %}
+  <tr><td colspan="6" class="empty">还没有积分流水。已有的历史调用不会补扣积分。</td></tr>
+  {% endfor %}
+  </tbody>
+</table></div></div>
+<p class="muted small section-note">实际收费以调用时保存的价格快照和上游回报用量为准；缺少可靠用量时进入待核，不按文本猜测 token。各模型单价见<a href="/pricing">价格表</a>。</p>
+{% endblock %}

@@ -1,104 +1,92 @@
 {% extends "base.html" %}
-
-{% block title %}LuomoAPI Hub{% endblock %}
-
-{% block content %}
-<section class="public-hero">
-  <div class="hero-copy">
-    <div class="eyebrow">Public API Portal</div>
-    <h1>LuomoAPI Hub</h1>
-    <p class="hero-subtitle">
-      A controlled entry point for LuomoCore, AstrBot, and future project APIs.
-    </p>
-
-    <div class="hero-actions">
-      <a class="btn btn-primary" href="/docs">View API Docs</a>
-      <a class="btn btn-secondary" href="/register">Request Access</a>
-      <a class="btn btn-ghost" href="/login">Sign in</a>
-    </div>
-  </div>
-
-  <div class="gateway-status-card">
-    <div class="status-row">
-      <span class="pulse-dot"></span>
-      <span class="status-label">Gateway ready</span>
+{% from "_macros.html" import board, sdk_screen %}
+{% block head_extra %}<script src="{{ asset('board.js') }}" defer></script>{% endblock %}
+{% block public %}
+<section class="hero">
+  <div class="wrap">
+    <div class="station-sign">
+      <div class="plate">
+        <span class="roundel lg hub" aria-hidden="true"><b>IX</b><i>00</i></span>
+        <h1 class="name"><span class="zh">换乘枢纽</span><span class="en">Interchange · api.luomo.moe</span></h1>
+        <div class="status"><strong data-line-status>{{ '全线正常运行' if catalog.status == 'operational' else '部分线路异常' }}</strong><span data-line-billable>{{ catalog.billable_count|default(0) }}</span> 条可计费线路<br><a href="/status">查看状态 →</a></div>
+      </div>
+      <div class="bar"><a href="https://luomo.moe"><span aria-hidden="true">←</span> 夜行线 <small>luomo.moe</small></a><span class="here" aria-hidden="true"></span><a href="https://file.luomo.moe">文件星港 <small>file.luomo.moe</small> <span aria-hidden="true">→</span></a></div>
     </div>
 
-    <div class="route-stats">
+    <div class="hero-grid">
       <div>
-        <span class="stat-value">{{ enabled_routes|default(0) }}</span>
-        <span class="stat-label">enabled routes</span>
+        <h2 class="hero-title">一个地址，<br>换乘<mark>每一条模型线路</mark>。</h2>
+        <p class="lead">OpenAI 兼容接口，把 base_url 换成下面这个就能接入。注册即领密钥，按官方标准价以积分结算，每次调用都有记录可查。</p>
+        <div class="url-plate"><span class="tag">BASE URL</span><code id="base-url">https://api.luomo.moe/v1</code><button type="button" data-copy-target="base-url">复制</button></div>
+        <div class="actions">
+          {% if user %}<a class="btn primary" href="/developer/keys">去领取密钥 <span class="arrow" aria-hidden="true">→</span></a>{% else %}<a class="btn primary" href="/register">注册并领取密钥 <span class="arrow" aria-hidden="true">→</span></a>{% endif %}
+          <a class="btn" href="/models">查看模型线路</a>
+        </div>
+        <ul class="hero-facts"><li>Chat Completions 与 Responses</li><li>SSE 流式</li><li>注册无需人工审核</li></ul>
       </div>
-      <div>
-        <span class="stat-value">{{ disabled_routes|default(0) }}</span>
-        <span class="stat-label">disabled routes</span>
-      </div>
-      <div>
-        <span class="stat-value">{{ documented_routes|default(0) }}</span>
-        <span class="stat-label">documented routes</span>
-      </div>
+      {{ board(catalog, limit=6) }}
     </div>
-
-    <p class="muted small">
-      Enabled routes accept scoped API keys. Disabled routes stay documented but cannot be called.
-    </p>
   </div>
 </section>
 
-<section class="quick-start-card">
-  <div class="page-header compact-header">
+<section class="section">
+  <div class="wrap">
+    <div class="section-head"><div><p class="eyebrow">Boarding · 上车三步</p><h2>从注册到第一次调用，四站直达。</h2></div><a class="text-link" href="/docs#quickstart">快速开始文档</a></div>
+    <ol class="line-diagram">
+      <li><span class="no">01</span><h3>注册账户</h3><p>填写用户名、邮箱和密码，立即启用。</p></li>
+      <li><span class="no">02</span><h3>领取密钥</h3><p>在控制台自助签发，完整密钥只显示一次。</p></li>
+      <li><span class="no">03</span><h3>获取积分</h3><p>兑换码或管理员加分到账；查询模型目录免费。</p></li>
+      <li><span class="no">终点</span><h3>开始调用</h3><p>换上 base_url 和密钥，在控制台查看用量。</p></li>
+    </ol>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap grid two code-intro">
     <div>
-      <div class="eyebrow">Quick Start</div>
-      <h1>From account to first API call</h1>
+      <p class="eyebrow">Compatible · 兼容</p>
+      <h2>沿用你熟悉的 SDK，<br>只换一行地址。</h2>
+      <p class="muted-lead">官方 OpenAI SDK、AIRI 等「OpenAI 兼容」客户端都能直接使用。</p>
+      <ul class="check-list">
+        <li><strong>两种协议</strong>：<code>/v1/chat/completions</code> 与 <code>/v1/responses</code>，均支持 SSE 流式。</li>
+        <li><strong>文本与函数工具</strong>：单次输出默认 2048、上限 8192 token。</li>
+        <li><strong>可追溯</strong>：每个响应带 <code>X-Request-ID</code>，控制台按请求 ID 定位结果与扣费。</li>
+      </ul>
+      <a class="text-link" href="/models#configuration">生成你的客户端配置</a>
     </div>
-  </div>
-  <div class="quick-steps">
-    <div><span>1</span><strong>Register</strong><p>Create a developer account with your email address.</p></div>
-    <div><span>2</span><strong>Verify Email</strong><p>Open the verification link sent by LuomoAPI Hub.</p></div>
-    <div><span>3</span><strong>Admin Approval</strong><p>Wait for the account to be approved in the admin console.</p></div>
-    <div><span>4</span><strong>Request API Key</strong><p>Ask for the scopes your integration needs.</p></div>
-    <div><span>5</span><strong>Call API</strong><p>Use your <code>lapi_...</code> key with the public gateway.</p></div>
+    {{ sdk_screen() }}
   </div>
 </section>
 
-<section class="feature-grid">
-  <article class="feature-card">
-    <div class="feature-icon">📘</div>
-    <h2>Public Docs</h2>
-    <p>
-      Browse documented public routes, authentication requirements, scopes,
-      rate limits, and example requests.
-    </p>
-    <a href="/docs">Open docs →</a>
-  </article>
+<section class="section">
+  <div class="wrap">
+    <div class="section-head"><div><p class="eyebrow">Fare · 票价</p><h2>按官方标准价结算，用多少扣多少。</h2><p>每次生成先冻结预算，再按上游回报的实际 token 结算；缓存命中与长上下文使用对应档位。</p></div><a class="btn" href="/pricing">查看全部价格</a></div>
+    <div class="fare">
+      <div><span class="big">¥1<em>=</em>100</span><small>积分 · 人民币兑换比例</small></div>
+      <div><span class="big">$1<em>=</em>720</span><small>积分 · 官方美元价格换算</small></div>
+      <div><span class="big">0</span><small>积分 · 读取模型目录不收费</small></div>
+    </div>
+  </div>
+</section>
 
-  <article class="feature-card">
-    <div class="feature-icon">🧑‍💻</div>
-    <h2>Developer Console</h2>
-    <p>
-      Approved developers can manage API keys, inspect usage logs, and call
-      enabled gateway routes with scoped access.
-    </p>
-    <a href="/register">Request access →</a>
-  </article>
+{% if routes %}
+<section class="section">
+  <div class="wrap">
+    <div class="section-head"><div><p class="eyebrow">Branch lines · 支线</p><h2>洛墨站的其他服务，也在这里换乘。</h2><p>业务接口统一经过 <code>/api/public/v1/…</code>，权限由管理员按 scope 单独授予。</p></div><a class="text-link" href="/docs#endpoints">业务接口文档</a></div>
+    <div class="card flush"><div class="table-wrap"><table>
+      <thead><tr><th>接口</th><th>路径</th><th>权限</th><th>状态</th></tr></thead>
+      <tbody>{% for route in routes %}<tr><td><span class="method {{ route.target_method|lower }}">{{ route.target_method }}</span> <strong>{{ route.name }}</strong></td><td><code>/api/public/v1/{{ route.public_path }}</code></td><td>{% if route.allow_anonymous %}<span class="chip">匿名可用</span>{% else %}<code>{{ route.required_scope or 'API Key' }}</code>{% endif %}</td><td><span class="badge {{ 'ok' if route.enabled else 'off' }}">{{ '运行中' if route.enabled else '未启用' }}</span></td></tr>{% endfor %}</tbody>
+    </table></div></div>
+  </div>
+</section>
+{% endif %}
 
-  <article class="feature-card">
-    <div class="feature-icon">🛡️</div>
-    <h2>Admin Gateway</h2>
-    <p>
-      Admins can approve developers, review API key requests, manage public
-      routes, and monitor gateway usage.
-    </p>
-    <a href="/login">Admin sign in →</a>
-  </article>
-  <article class="feature-card">
-    <div class="feature-icon">SAFE</div>
-    <h2>Security Boundary</h2>
-    <p>
-      Report issues for the API portal and gateway. Do not test SSH, firewall,
-      unrelated domains, or destructive scenarios.
-    </p>
-    <a href="/security">Security policy →</a>
-  </article>
+<section class="section closing">
+  <div class="wrap">
+    <div class="closing-sign">
+      <div><p class="eyebrow plain">Next departure</p><h2>下一班，现在发车。</h2><p>注册免费，领钥即用；有问题先看文档，再看状态页。</p></div>
+      <div class="actions">{% if user %}<a class="btn primary" href="/developer">进入控制台 <span class="arrow" aria-hidden="true">→</span></a>{% else %}<a class="btn primary" href="/register">注册账户 <span class="arrow" aria-hidden="true">→</span></a><a class="btn" href="/login">我已有账户</a>{% endif %}</div>
+    </div>
+  </div>
 </section>
 {% endblock %}

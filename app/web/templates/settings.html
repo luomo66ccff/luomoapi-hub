@@ -1,6 +1,10 @@
 {% extends "base.html" %}
-{% block title %}Settings - LuomoAPI Hub{% endblock %}
+{% block title %}系统设置 · LuomoAPI{% endblock %}
 {% block content %}
-<section class="page-head"><div><p class="eyebrow">System Status</p><h1>Settings</h1><p class="muted">Configuration state without exposing sensitive values.</p></div></section>
-<section class="card"><dl class="kv big">{% for key, value in status.items() %}<div><dt>{{ key }}</dt><dd>{% if value in ['configured','exists'] %}<span class="badge success">{{ value }}</span>{% elif value in ['missing'] %}<span class="badge muted">{{ value }}</span>{% else %}{{ value }}{% endif %}</dd></div>{% endfor %}</dl></section>
+{% set names = {'Database':'数据库文件','App port':'应用端口','Session secret':'会话密钥','Admin':'管理员账户','Environment':'运行环境','AstrBot credential':'AstrBot 凭据','LuomoCore credential':'LuomoCore 凭据','SMTP host':'SMTP 主机','SMTP username':'SMTP 用户名','SMTP password':'SMTP 密码','Email verification TTL hours':'验证链接有效期（小时）'} %}
+<div class="page-head"><div><p class="eyebrow">Settings · 系统设置</p><h1>系统设置</h1><p class="lead">当前配置状态，不展示敏感值。修改需在服务器环境变量中进行。</p></div></div>
+<div class="card flush"><div class="table-wrap"><table>
+  <thead><tr><th>配置项</th><th>状态 / 值</th></tr></thead>
+  <tbody>{% for key, value in status.items() %}<tr><td>{{ names.get(key, key) }}<span class="sub mono">{{ key }}</span></td><td>{% if value in ['configured', 'exists', 'missing'] %}<span class="badge {{ value|tone }}">{{ value|label }}</span>{% else %}<code>{{ value }}</code>{% endif %}</td></tr>{% endfor %}</tbody>
+</table></div></div>
 {% endblock %}

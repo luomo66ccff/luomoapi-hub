@@ -1,30 +1,17 @@
-<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <title>Email Verification - LuomoAPI Hub</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <link rel="stylesheet" href="/static/style.css">
-</head>
-<body class="auth-page">
-  <main class="auth-shell">
-    <section class="auth-card">
-      <div class="auth-brand">
-        <div class="auth-orb">LH</div>
-        <div>
-          <h1>Email Verification</h1>
-          <p>LuomoAPI Hub</p>
-        </div>
-      </div>
-
-      <div class="{{ 'auth-success' if success else 'auth-error' }}">{{ message }}</div>
-
-      <div class="auth-footer">
-        <a href="/login">Go to login</a>
-        <span>or</span>
-        <a href="/">back home</a>
-      </div>
-    </section>
-  </main>
-</body>
-</html>
+{% extends "base.html" %}
+{% block title %}邮箱验证 · LuomoAPI{% endblock %}
+{% block page %}
+<div class="gate">
+  <section class="gate-story">
+    <p class="eyebrow">Verification · 邮箱验证</p>
+    <h1>确认这个邮箱<br>属于你。</h1>
+    <p class="lead">邮箱验证只用于确认地址归属，不影响领取密钥和调用 API。打开链接后还需要手动点一次确认。</p>
+  </section>
+  <section class="gate-card">
+    <h2>{{ '邮箱验证成功' if success else '确认邮箱地址' if valid else '暂时无法完成验证' }}</h2>
+    <div class="notice {{ 'success' if success else 'error' if not valid else '' }}" role="status">{{ message }}</div>
+    {% if valid %}<form method="post" action="/verify-email" class="form"><input type="hidden" name="token" value="{{ token }}"><button class="btn primary block" type="submit">确认并验证邮箱</button></form>{% endif %}
+    <div class="foot actions"><a class="btn" href="/login">前往登录</a><a class="text-link" href="/">返回首页</a></div>
+  </section>
+</div>
+{% endblock %}

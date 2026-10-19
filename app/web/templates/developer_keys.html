@@ -1,172 +1,58 @@
 {% extends "base.html" %}
-
-{% block title %}My API Keys - LuomoAPI Hub{% endblock %}
-
+{% block title %}API 密钥 · LuomoAPI{% endblock %}
 {% block content %}
-<div class="page-header">
-  <div>
-    <div class="eyebrow">Developer Console</div>
-    <h1>My API Keys</h1>
-    <p class="page-subtitle">
-      Request scoped API keys and review your issued credentials. Full keys are only shown once when created.
-    </p>
-  </div>
+<div class="page-head">
+  <div><p class="eyebrow">Tickets · API 密钥</p><h1>API 密钥</h1><p class="lead">注册用户可自助签发，无需审核。所有密钥共用你的积分；完整密钥只在签发后显示一次。</p></div>
+  <div class="actions"><a class="btn" href="/developer/credits">积分余额</a></div>
 </div>
 
 {% if not user.email_verified %}
-<section class="docs-note">
-  <strong>Email verification required</strong>
-  <p>Verify <code>{{ user.email }}</code> before requesting API keys.</p>
-  <form method="post" action="/developer/resend-verification" class="inline-form">
-    <button class="btn btn-secondary compact" type="submit">Resend verification email</button>
+<div class="notice warn"><strong>邮箱尚未验证</strong><p>可以正常领取密钥。验证邮箱有助于确认 <code>{{ user.email }}</code> 属于你。</p>
+  <form method="post" action="/developer/resend-verification"><button class="btn sm" type="submit">重新发送验证邮件</button></form>
+</div>
+{% endif %}
+
+<section class="card issue-card">
+  <div class="issue-head"><div><h2>签发新密钥</h2><p class="muted">立即生效，包含模型目录、Chat Completions 与 Responses 三项 AI 权限，每分钟 60 次。</p></div><span class="roundel hub" aria-hidden="true"><b>+</b><i>KEY</i></span></div>
+  <form method="post" action="/developer/keys/request" class="form two">
+    <input type="hidden" name="key_nonce" value="{{ key_nonce }}">
+    <label class="field">密钥名称<input name="name" type="text" placeholder="例如：AIRI 桌面伴侣" maxlength="100" required><small>只用于区分用途，可以写设备或项目名。</small></label>
+    <label class="field">用途说明（可选）<input name="requested_reason" type="text" placeholder="例如：日常聊天" maxlength="2000"></label>
+    <input type="hidden" name="requested_scopes" value="models:read,chat:completions,responses:create">
+    <div class="wide actions"><button class="btn primary" type="submit">签发 API 密钥 <span class="arrow" aria-hidden="true">→</span></button><span class="muted small">按 OpenAI 官方标准价以积分计费；业务服务权限需联系管理员。</span></div>
   </form>
 </section>
-{% endif %}
 
-{% if user.status != "active" %}
-<section class="docs-note">
-  <strong>Account pending approval</strong>
-  <p>
-    Your current account status is <code>{{ user.status }}</code>. API key requests require an active account.
-  </p>
-</section>
-{% endif %}
-
-{% if created %}
-<section class="docs-note">
-  <strong>Request submitted</strong>
-  <p>Your API key request has been submitted for admin review.</p>
-</section>
-{% endif %}
-
-<section class="route-card">
-  <div class="route-card-top">
-    <div>
-      <h2>Request a new API Key</h2>
-      <p class="muted">Describe the intended use and requested scopes. Admin approval is required.</p>
+<div class="block-title section-gap"><h2>已签发（{{ keys|length }}）</h2><span class="muted small">配额 0 表示不限 · 时间为 UTC</span></div>
+<div class="tickets">
+  {% for item in keys %}
+  {% set active = item.status == 'active' %}
+  <article class="ticket {{ '' if active else 'inactive' }}">
+    <div class="stub"><b>{{ 'ACTIVE' if active else 'VOID' }}</b><span>IX·{{ '%04d'|format(item.id) }}</span></div>
+    <div class="body">
+      <div class="row1"><div><h3>{{ item.name }}</h3><span class="serial">{{ item.key_prefix }}</span></div><div class="actions"><span class="badge {{ item.status|tone }}">{{ item.status|label }}</span>
+        {% if active %}<form method="post" action="/developer/keys/{{ item.id }}/revoke" class="inline-form" data-confirm="撤销后使用这把密钥的应用会立即失效，确定撤销「{{ item.name }}」吗？"><button class="btn danger sm" type="submit">撤销</button></form>{% endif %}</div></div>
+      <dl>
+        <div><dt>权限</dt><dd>{% if item.scopes %}<span class="chips">{% for scope in item.scopes.split(',') if scope.strip() %}<span class="chip">{{ scope.strip() }}</span>{% endfor %}</span>{% else %}—{% endif %}</dd></div>
+        <div><dt>模型</dt><dd>{% if item.model_policy == 'all' %}全部模型（含新增）{% elif item.models %}{{ item.models|length }} 个已定价模型{% else %}无模型权限{% endif %}</dd></div>
+        <div><dt>频率 / 配额</dt><dd class="num">{{ item.rate_limit_per_minute or '不限' }}/分 · {{ item.daily_quota or '不限' }}/日 · {{ item.monthly_quota or '不限' }}/月</dd></div>
+        <div><dt>有效期 · 最近使用</dt><dd>{{ item.expires_at|utc if item.expires_at else '不过期' }} · {{ item.last_used_at|utc }}</dd></div>
+      </dl>
+      <div class="stripe" aria-hidden="true"></div>
     </div>
-  </div>
-
-  <form method="post" action="/developer/keys/request" class="auth-form">
-    <label>
-      <span>Key name</span>
-      <input name="name" type="text" placeholder="My integration key" required>
-    </label>
-
-    <label>
-      <span>Requested scopes</span>
-      <input name="requested_scopes" type="text" placeholder="luomocore:health">
-      <small>Examples: luomocore:health, astrbot:read</small>
-    </label>
-
-    <label>
-      <span>Reason</span>
-      <textarea name="requested_reason" rows="4" placeholder="What will this key be used for?"></textarea>
-    </label>
-
-    <button class="btn btn-primary auth-submit" type="submit" {% if user.status != "active" or not user.email_verified %}disabled{% endif %}>
-      Submit Key Request
-    </button>
-  </form>
-</section>
-
-<div class="page-header compact-header">
-  <div>
-    <div class="eyebrow">Credentials</div>
-    <h1>Issued Keys</h1>
-  </div>
+  </article>
+  {% else %}
+  <div class="card empty-state"><strong>还没有密钥</strong>在上方填写名称即可签发；之后到“积分”页兑换余额。</div>
+  {% endfor %}
 </div>
 
-<section class="card table-wrap">
-  <table>
-    <thead>
-      <tr>
-        <th>Key</th>
-        <th>Status</th>
-        <th>Scopes</th>
-        <th>Allowed routes</th>
-        <th>Quota</th>
-        <th>Last used</th>
-        <th>Action</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for item in keys %}
-      <tr>
-        <td>
-          <strong>{{ item.name }}</strong><br>
-          <span class="muted">{{ item.key_prefix }}</span>
-        </td>
-        <td>
-          <span class="badge {{ 'badge-success' if item.status == 'active' else 'badge-muted' }}">
-            {{ item.status }}
-          </span>
-        </td>
-        <td><code>{{ item.scopes or "-" }}</code></td>
-        <td><code>{{ item.allowed_routes or "-" }}</code></td>
-        <td>
-          {{ item.rate_limit_per_minute or 0 }}/min<br>
-          <span class="muted">{{ item.daily_quota or 0 }}/day</span>
-        </td>
-        <td>{{ item.last_used_at or "-" }}</td>
-        <td>
-          {% if item.status == "active" %}
-          <form method="post" action="/developer/keys/{{ item.id }}/revoke" class="inline-form">
-            <button class="btn ghost compact danger-soft" type="submit">Revoke</button>
-          </form>
-          {% else %}
-            -
-          {% endif %}
-        </td>
-      </tr>
-      {% else %}
-      <tr>
-        <td colspan="7" class="empty">No issued API keys yet.</td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
-</section>
-
-<div class="page-header compact-header">
-  <div>
-    <div class="eyebrow">Requests</div>
-    <h1>Key Requests</h1>
-  </div>
-</div>
-
-<section class="card table-wrap">
-  <table>
-    <thead>
-      <tr>
-        <th>Name</th>
-        <th>Scopes</th>
-        <th>Status</th>
-        <th>Reason</th>
-        <th>Created</th>
-        <th>Admin note</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for req in requests %}
-      <tr>
-        <td>{{ req.name }}</td>
-        <td><code>{{ req.requested_scopes or "-" }}</code></td>
-        <td>
-          <span class="badge {{ 'badge-success' if req.status == 'approved' else 'badge-muted' }}">
-            {{ req.status }}
-          </span>
-        </td>
-        <td>{{ req.requested_reason or "-" }}</td>
-        <td>{{ req.created_at }}</td>
-        <td>{{ req.admin_note or "-" }}</td>
-      </tr>
-      {% else %}
-      <tr>
-        <td colspan="6" class="empty">No key requests yet.</td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
-</section>
+{% if requests %}
+<details class="more section-gap">
+  <summary>签发与申请记录（{{ requests|length }}）</summary>
+  <div class="table-wrap"><table>
+    <thead><tr><th>名称</th><th>权限范围</th><th>状态</th><th>说明</th><th>时间（UTC）</th></tr></thead>
+    <tbody>{% for req in requests %}<tr><td>{{ req.name }}</td><td><code>{{ req.requested_scopes or '—' }}</code></td><td><span class="badge {{ {'approved':'ok','pending':'warn'}.get(req.status, 'off') }}">{{ {'approved':'已签发','pending':'待审核','rejected':'已拒绝'}.get(req.status, req.status) }}</span></td><td>{{ req.admin_note or req.requested_reason or '—' }}</td><td class="num">{{ req.created_at|utc }}</td></tr>{% endfor %}</tbody>
+  </table></div>
+</details>
+{% endif %}
 {% endblock %}

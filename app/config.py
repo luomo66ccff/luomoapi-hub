@@ -25,6 +25,7 @@ class Settings:
     session_secret: str = env("SESSION_SECRET", "")
     astrbot_base_url: str = env("ASTRBOT_BASE_URL", "https://atri-api.luomo.moe")
     luomocore_base_url: str = env("LUOMOCORE_BASE_URL", "https://ops.luomo.moe")
+    codexproxy_base_url: str = env("CODEXPROXY_BASE_URL", "http://codex-proxy:8317")
     smtp_host: str = env("SMTP_HOST", "")
     smtp_port: int = int(env("SMTP_PORT", "465") or "465")
     smtp_username: str = env("SMTP_USERNAME", "")

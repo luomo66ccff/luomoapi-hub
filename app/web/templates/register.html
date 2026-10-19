@@ -1,83 +1,34 @@
-<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <title>Register - LuomoAPI Hub</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <link rel="stylesheet" href="/static/style.css">
-</head>
-<body class="auth-page">
-  <main class="auth-shell">
-    <section class="auth-card register-card">
-      <div class="auth-brand">
-        <div class="auth-orb">LH</div>
-        <div>
-          <h1>Request Access</h1>
-          <p>LuomoAPI Hub Developer Registration</p>
-        </div>
+{% extends "base.html" %}
+{% block title %}注册 · LuomoAPI{% endblock %}
+{% block page %}
+<div class="gate">
+  <section class="gate-story">
+    <p class="eyebrow">Boarding · 上车</p>
+    <h1>办一张票，<br>换乘任意线路。</h1>
+    <p class="lead">注册后立即启用，登录即可领取个人 AI API 密钥；兑换积分后开始调用，无需等待人工审核。</p>
+    <ol class="steps-mini"><li>01 注册</li><li>02 领取密钥</li><li>03 兑换积分</li><li>04 开始调用</li></ol>
+    <div class="pass" aria-hidden="true">
+      <div class="main">
+        <div class="route"><span>注册</span><span class="arrow"></span><span>第一次调用</span></div>
+        <div class="meta"><span>审核<b>无需</b></span><span>密钥<b>自助签发</b></span><span>计价<b>官方标准</b></span></div>
       </div>
-
-      <p class="auth-description">
-        Create a developer account, verify your email, then wait for admin
-        approval. API key requests unlock only after both checks pass.
-      </p>
-
-      {% if error %}
-        <div class="auth-error">{{ error }}</div>
-      {% endif %}
-
-      {% if message %}
-        <div class="auth-success">{{ message }}</div>
-      {% elif submitted %}
-        <div class="auth-success">
-          Registration submitted. Please check your email for the verification link.
-        </div>
-      {% endif %}
-
-      <div class="auth-tags">
-        <span>1 Register</span>
-        <span>2 Verify Email</span>
-        <span>3 Admin Approval</span>
-      </div>
-
-      <form method="post" action="/register" class="auth-form">
-        <label>
-          <span>Username</span>
-          <input name="username" type="text" placeholder="your_name" autocomplete="username" required>
-        </label>
-
-        <label>
-          <span>Email</span>
-          <input name="email" type="email" placeholder="you@example.com" autocomplete="email" required>
-          <small>We will send a one-time verification link to this address.</small>
-        </label>
-
-        <label>
-          <span>Use case</span>
-          <textarea name="usage_reason" rows="4" placeholder="Briefly describe why you need API access." required></textarea>
-        </label>
-
-        <label>
-          <span>Password</span>
-          <input name="password" type="password" autocomplete="new-password" required>
-          <small>Use at least 10 characters.</small>
-        </label>
-
-        <label>
-          <span>Confirm password</span>
-          <input name="confirm_password" type="password" autocomplete="new-password" required>
-        </label>
-
-        <button type="submit" class="btn btn-primary auth-submit">
-          Submit Access Request
-        </button>
-      </form>
-
-      <div class="auth-footer">
-        <span>Already verified and approved?</span>
-        <a href="/login">Sign in</a>
-      </div>
-    </section>
-  </main>
-</body>
-</html>
+      <div class="side">NEW PASS</div>
+    </div>
+  </section>
+  <section class="gate-card">
+    <h2>注册账户</h2>
+    <p class="desc">填写账户信息，使用场景可选。</p>
+    {% if error %}<div class="notice error" role="alert">{{ error }}</div>{% endif %}
+    {% if message %}<div class="notice success" role="status">{{ message }}</div>{% elif submitted %}<div class="notice success" role="status">如注册信息可用，账户已创建，可直接登录。邮箱验证不影响使用。</div>{% endif %}
+    <form method="post" action="/register" class="form">
+      <label class="field" for="username">用户名<input id="username" name="username" type="text" autocomplete="username" maxlength="64" required></label>
+      <label class="field" for="email">邮箱<input id="email" name="email" type="email" autocomplete="email" required><small>用于接收一次性验证链接；邮箱验证不影响账户使用。</small></label>
+      <label class="field" for="password">密码<span class="password-field"><input id="password" name="password" type="password" minlength="10" autocomplete="new-password" required><button type="button" class="password-toggle" aria-controls="password" aria-pressed="false" aria-label="切换密码可见性">显示</button></span><small>至少 10 个字符。</small></label>
+      <label class="field" for="confirm-password">确认密码<input id="confirm-password" name="confirm_password" type="password" minlength="10" autocomplete="new-password" required></label>
+      <label class="field" for="usage-reason">使用场景（可选）<textarea id="usage-reason" name="usage_reason" rows="2" maxlength="2000" placeholder="例如：AIRI 桌面伴侣、博客摘要脚本"></textarea></label>
+      <button type="submit" class="btn primary block">注册账户 <span class="arrow" aria-hidden="true">→</span></button>
+    </form>
+    <div class="foot">已经有账户？<a href="/login">登录</a></div>
+  </section>
+</div>
+{% endblock %}

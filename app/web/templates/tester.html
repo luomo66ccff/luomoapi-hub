@@ -1,26 +1,29 @@
 {% extends "base.html" %}
-{% block title %}Tester - LuomoAPI Hub{% endblock %}
+{% block title %}接口测试 · LuomoAPI{% endblock %}
 {% block content %}
-<section class="page-head"><div><p class="eyebrow">Endpoint Tester</p><h1>Tester</h1><p class="muted">Send redacted, logged requests to registered APIs.</p></div></section>
-{% if error %}<div class="alert danger">{{ error }}</div>{% endif %}
-<section class="grid two tester-grid">
-  <form class="card form-grid tester-form" method="post" action="/tester">
-    <label class="wide"><span>API</span><select name="api_id">{% for api in apis %}<option value="{{ api.id }}" {{ 'selected' if selected_api_id == api.id }}>{{ api.name }} · {{ api.base_url }}</option>{% endfor %}</select></label>
-    <label><span>Method</span><select name="method">{% for method in methods %}<option value="{{ method }}" {{ 'selected' if form.method == method }}>{{ method }}</option>{% endfor %}</select></label>
-    <label class="wide"><span>Path</span><input name="path" value="{{ form.path }}" placeholder="/health" required></label>
-    <label class="wide"><span>Headers JSON</span><textarea name="headers_json">{{ form.headers_json }}</textarea></label>
-    <label class="wide"><span>Query JSON</span><textarea name="query_json">{{ form.query_json }}</textarea></label>
-    <label class="wide"><span>Body JSON</span><textarea name="body_json">{{ form.body_json }}</textarea></label>
-    <label class="check"><input type="checkbox" name="use_saved_auth" {{ 'checked' if form.use_saved_auth }}> Use saved auth</label>
-    <button class="btn primary wide" type="submit">Send</button>
+<div class="page-head"><div><p class="eyebrow">Test track · 接口测试</p><h1>接口测试</h1><p class="lead">向已登记的上游 API 发送请求，查看响应与脱敏后的记录。AI 生成接口不能从这里绕过计费网关。</p></div><div class="actions"><a class="btn" href="/logs">测试日志</a></div></div>
+{% if error %}<div class="notice error" role="alert">{{ error }}</div>{% endif %}
+<div class="playground">
+  <form class="card form" method="post" action="/tester">
+    <label class="field">API<select name="api_id">{% for api in apis %}<option value="{{ api.id }}" {{ 'selected' if selected_api_id == api.id }}>{{ api.name }} · {{ api.base_url }}</option>{% endfor %}</select></label>
+    <div class="form two">
+      <label class="field">方法<select name="method">{% for method in methods %}<option value="{{ method }}" {{ 'selected' if form.method == method }}>{{ method }}</option>{% endfor %}</select></label>
+      <label class="field">请求路径<input name="path" class="mono" value="{{ form.path }}" placeholder="/health" required></label>
+    </div>
+    <label class="field">请求头 JSON<textarea name="headers_json" class="mono" rows="3">{{ form.headers_json }}</textarea></label>
+    <label class="field">查询参数 JSON<textarea name="query_json" class="mono" rows="3">{{ form.query_json }}</textarea></label>
+    <label class="field">请求体 JSON<textarea name="body_json" class="mono" rows="4">{{ form.body_json }}</textarea></label>
+    <label class="check"><input type="checkbox" name="use_saved_auth" {{ 'checked' if form.use_saved_auth }}> 使用已保存的上游凭据</label>
+    <div class="actions"><button class="btn primary" type="submit">发送请求 <span class="arrow" aria-hidden="true">→</span></button></div>
   </form>
-  <article class="card result-card">
-    <h2>Response</h2>
+  <section class="screen">
+    <div class="screen-bar"><span class="title">RESPONSE</span>{% if result %}<span class="play-status">HTTP {{ result.status_code or 'ERR' }} · {{ result.response_time_ms }} ms · {{ '成功' if result.success else '失败' }}</span>{% endif %}</div>
     {% if result %}
-      <dl class="kv"><div><dt>Status Code</dt><dd>{{ result.status_code or 'ERR' }}</dd></div><div><dt>Response Time</dt><dd>{{ result.response_time_ms }} ms</dd></div><div><dt>Success</dt><dd><span class="badge {{ 'success' if result.success else 'warning' }}">{{ result.success }}</span></dd></div></dl>
-      <h3>Headers</h3><pre>{{ result.response_headers_preview }}</pre>
-      <h3>Body</h3><pre>{{ result.response_body_display }}</pre>
-    {% else %}<div class="empty">Send a request to see the response.</div>{% endif %}
-  </article>
-</section>
+    <pre class="output output-short">{{ result.response_headers_preview }}</pre>
+    <pre class="output">{{ result.response_body_display }}</pre>
+    {% else %}
+    <pre class="output">发送一次请求，响应会显示在这里。</pre>
+    {% endif %}
+  </section>
+</div>
 {% endblock %}

@@ -1,65 +1,29 @@
-<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <title>Login · LuomoAPI Hub</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <link rel="stylesheet" href="/static/style.css">
-</head>
-<body class="auth-page">
-  <main class="auth-shell">
-    <section class="auth-card">
-      <div class="auth-brand">
-        <div class="auth-orb">LH</div>
-        <div>
-          <h1>LuomoAPI Hub</h1>
-          <p>Developer Gateway Access</p>
-        </div>
+{% extends "base.html" %}
+{% block title %}登录 · LuomoAPI{% endblock %}
+{% block page %}
+<div class="gate">
+  <section class="gate-story">
+    <p class="eyebrow">Ticket gate · 检票口</p>
+    <h1>欢迎回来，<br>继续你的行程。</h1>
+    <p class="lead">管理密钥、查看用量和积分。开发者与管理员使用同一个入口。</p>
+    <div class="pass" aria-hidden="true">
+      <div class="main">
+        <div class="route"><span>你的应用</span><span class="arrow"></span><span>模型线路</span></div>
+        <div class="meta"><span>站点<b>换乘枢纽</b></span><span>协议<b>OpenAI</b></span><span>票种<b>积分</b></span></div>
       </div>
-
-      <p class="auth-description">
-        For approved developers and administrators.
-      </p>
-
-      <div class="auth-tags">
-        <span>Admin Console</span>
-        <span>Developer Console</span>
-        <span>Public API Gateway</span>
-      </div>
-
-      {% if error %}
-        <div class="auth-error">
-          {% if error is string %}
-            {{ error }}
-          {% else %}
-            Invalid username or password.
-          {% endif %}
-        </div>
-      {% endif %}
-
-      <form method="post" action="/login" class="auth-form">
-        <input type="hidden" name="next" value="{{ next|default('/') }}">
-
-        <label>
-          <span>Username</span>
-          <input name="username" type="text" autocomplete="username" required>
-        </label>
-
-        <label>
-          <span>Password</span>
-          <input name="password" type="password" autocomplete="current-password" required>
-        </label>
-
-        <button type="submit" class="btn btn-primary auth-submit">
-          Enter API Hub
-        </button>
-      </form>
-
-      <div class="auth-footer">
-        <span>Need access?</span>
-        <a href="/register">Request developer access</a>
-      </div>
-    </section>
-  </main>
-</body>
-</html>
+      <div class="side">LUOMO API</div>
+    </div>
+  </section>
+  <section class="gate-card">
+    <h2>登录</h2>
+    <p class="desc">使用注册时的用户名和密码。</p>
+    {% if error %}<div class="notice error" role="alert">{{ error }}</div>{% endif %}
+    <form method="post" action="/login" class="form">
+      <label class="field" for="username">用户名<input id="username" name="username" type="text" autocomplete="username" value="{{ username|default('') }}" required autofocus></label>
+      <label class="field" for="password">密码<span class="password-field"><input id="password" name="password" type="password" autocomplete="current-password" required><button type="button" class="password-toggle" aria-controls="password" aria-pressed="false" aria-label="切换密码可见性">显示</button></span></label>
+      <button class="btn primary block" type="submit">登录 <span class="arrow" aria-hidden="true">→</span></button>
+    </form>
+    <div class="foot">还没有账户？<a href="/register">注册并领取密钥</a></div>
+  </section>
+</div>
+{% endblock %}

@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% from "_macros.html" import roundel %}
+{% block title %}价格 · LuomoAPI{% endblock %}
+{% block description %}LuomoAPI 按 OpenAI 官方 Standard 价格以积分结算：¥1 = 100 积分，$1 = 720 积分。附 token 费用估算器。{% endblock %}
+{% macro price_cell(usd, credits) -%}
+{%- if usd is not none %}<span class="num">{{ credits|credit }}</span><span class="usd">${{ usd }}</span>{% else %}<span class="muted">—</span>{% endif -%}
+{%- endmacro %}
+{% macro price_rows(rows) -%}
+{% for row in rows %}
+<tr>
+  <td><div class="cell-model">{{ roundel(row.model, 'sm') }}<code>{{ row.model }}</code></div></td>
+  <td class="num">{{ price_cell(row.input, row.input_credits) }}</td>
+  <td class="num">{{ price_cell(row.cached_input, row.cached_input_credits) }}</td>
+  <td class="num">{{ price_cell(row.output, row.output_credits) }}</td>
+  <td>{% if row.long_context_threshold %}<span class="small">输入 &gt; {{ '{:,}'.format(row.long_context_threshold) }} token 时<br>输入 {{ row.long_input_credits|credit }} · 输出 {{ row.long_output_credits|credit }}</span>{% else %}<span class="muted">—</span>{% endif %}</td>
+</tr>
+{% endfor %}
+{%- endmacro %}
+{% block page %}
+<div class="page-head">
+  <div><p class="eyebrow">Fares · 价格</p><h1>票价公开，按实际 token 结算。</h1><p class="lead">生成价格采用 OpenAI 官方 Standard 单价，按每美元 720 积分换算；每次生成先冻结预算，再按上游回报的真实用量结算。读取模型目录免费。</p></div>
+  <div class="actions">{% if user %}<a class="btn primary" href="/developer/credits">我的积分 <span class="arrow" aria-hidden="true">→</span></a>{% else %}<a class="btn primary" href="/register">注册领取密钥 <span class="arrow" aria-hidden="true">→</span></a>{% endif %}</div>
+</div>
+
+<div class="fare">
+  <div><span class="big">¥1<em>=</em>100</span><small>积分 · 兑换码与人工加分按此到账</small></div>
+  <div><span class="big">$1<em>=</em>720</span><small>积分 · 官方美元单价的固定换算</small></div>
+  <div><span class="big">0.000001</span><small>积分 · 最小计费精度（六位小数）</small></div>
+</div>
+
+<section class="section-gap" aria-labelledby="estimator-title">
+  <div class="block-title"><h2 id="estimator-title">费用估算</h2><span class="muted small">按下表单价估算，不含长上下文档位</span></div>
+  <form id="estimator" class="card">
+    <div class="estimator">
+      <label class="field">模型<select id="est-model">{% for row in (lines or prices.models) %}{% if row.output is not none %}<option value="{{ row.model }}" data-input="{{ row.input_credits }}" data-output="{{ row.output_credits }}"{% if row.cached_input_credits is not none %} data-cached="{{ row.cached_input_credits }}"{% endif %}{% if row.model == 'gpt-6-luna' %} selected{% endif %}>{{ row.model }}</option>{% endif %}{% endfor %}</select></label>
+      <label class="field">输入 token<input id="est-input" class="mono" type="number" min="0" step="1" value="2000" inputmode="numeric"></label>
+      <label class="field">其中缓存命中<input id="est-cached" class="mono" type="number" min="0" step="1" value="0" inputmode="numeric"></label>
+      <label class="field">输出 token<input id="est-output" class="mono" type="number" min="0" step="1" value="800" inputmode="numeric"></label>
+    </div>
+    <div class="estimate-out" aria-live="polite">
+      <div><span>约合美元</span><strong id="est-usd">—</strong></div>
+      <div><span>约合人民币</span><strong id="est-cny">—</strong></div>
+      <div><span>消耗积分</span><strong id="est-credits">—</strong></div>
+    </div>
+    <p class="muted small section-note">实际扣费以调用时保存的价格快照和上游回报的用量为准；缺少可靠用量的请求进入待核，不按文本长度猜测。</p>
+  </form>
+</section>
+
+<section class="section-gap">
+  <div class="block-title"><h2>本站线路</h2><span class="muted small">每 100 万 token 的积分（下方小字为官方美元价）</span></div>
+  {% if lines %}
+  <div class="card flush"><div class="table-wrap"><table class="price-table">
+    <thead><tr><th>模型</th><th class="num">输入</th><th class="num">缓存输入</th><th class="num">输出</th><th>长上下文</th></tr></thead>
+    <tbody>{{ price_rows(lines) }}</tbody>
+  </table></div></div>
+  {% else %}
+  <div class="notice warn"><strong>暂时读不到上游模型目录</strong><p>下方仍列出全部官方已定价型号；能否调用以你的密钥为准。</p></div>
+  {% endif %}
+</section>
+
+<details class="more" {% if not lines %}open{% endif %}>
+  <summary>其他官方已定价型号（{{ others|length }}）</summary>
+  <div class="table-wrap"><table class="price-table">
+    <thead><tr><th>模型</th><th class="num">输入</th><th class="num">缓存输入</th><th class="num">输出</th><th>长上下文</th></tr></thead>
+    <tbody>{{ price_rows(others) }}</tbody>
+  </table></div>
+</details>
+
+<p class="muted small section-note">价格来源：<a href="{{ prices.source }}" rel="noopener noreferrer" target="_blank">OpenAI 官方价格表 ↗</a> · 版本 <code>{{ prices.version }}</code> · 采集于 {{ prices.retrieved_at }}。上游目录中列出但没有官方文本价格的模型，个人密钥暂不能调用。</p>
+{% endblock %}

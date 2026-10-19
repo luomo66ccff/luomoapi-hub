@@ -1,6 +1,9 @@
 {% extends "base.html" %}
-{% block title %}Gateway Logs - LuomoAPI Hub{% endblock %}
+{% block title %}网关调用 · LuomoAPI{% endblock %}
 {% block content %}
-<section class="page-head"><div><p class="eyebrow">Admin</p><h1>Gateway Logs</h1><p class="muted">Recent public gateway calls with redacted previews.</p></div></section>
-<section class="card table-wrap"><table><thead><tr><th>Time</th><th>User</th><th>Method</th><th>Route</th><th>Status</th><th>Latency</th><th>Error</th></tr></thead><tbody>{% for log in logs %}<tr><td>{{ log.created_at }}</td><td>{{ log.username or '-' }}</td><td>{{ log.method }}</td><td><code>{{ log.public_path }}</code></td><td>{{ log.status_code or '-' }}</td><td>{{ log.response_time_ms or '-' }} ms</td><td>{{ log.error_summary or '-' }}</td></tr>{% else %}<tr><td colspan="7" class="empty">No logs.</td></tr>{% endfor %}</tbody></table></section>
+<div class="page-head"><div><p class="eyebrow">Gate log · 网关调用</p><h1>网关调用</h1><p class="lead">最近 200 次经过网关的请求。不展示密钥、敏感请求头和请求正文。</p></div><div class="actions"><a class="btn" href="/admin/ai-usage">全站 AI 用量</a></div></div>
+<div class="card flush"><div class="table-wrap"><table>
+  <thead><tr><th>时间（UTC）</th><th>用户</th><th>方法</th><th>模型 / 接口</th><th>状态</th><th class="right">耗时</th><th>错误</th></tr></thead>
+  <tbody>{% for log in logs %}<tr><td class="num">{{ log.created_at|utc }}</td><td>{{ log.username or '—' }}</td><td><span class="method {{ log.method|lower }}">{{ log.method }}</span></td><td><code>{{ log.model or log.public_path }}</code></td><td class="num">{{ log.status_code or '—' }}</td><td class="num right">{{ log.response_time_ms if log.response_time_ms is not none else '—' }} ms</td><td class="small">{{ log.error_summary or '—' }}</td></tr>{% else %}<tr><td colspan="7" class="empty">暂无调用记录。</td></tr>{% endfor %}</tbody>
+</table></div></div>
 {% endblock %}

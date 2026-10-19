@@ -1,13 +1,28 @@
 {% extends "base.html" %}
-{% block title %}{{ api.name }} - LuomoAPI Hub{% endblock %}
+{% block title %}{{ api.name }} · LuomoAPI{% endblock %}
 {% block content %}
-<section class="page-head"><div><p class="eyebrow">API Detail</p><h1>{{ api.name }}</h1><p class="muted">{{ api.base_url }}</p></div><a class="btn ghost" href="/apis">Back</a></section>
-<section class="grid two">
-  <article class="card"><h2>Profile</h2><dl class="kv"><div><dt>Slug</dt><dd>{{ api.slug }}</dd></div><div><dt>Auth</dt><dd>{{ api.auth_type }}</dd></div><div><dt>Secret Ref</dt><dd>{{ api.secret_ref or '—' }}</dd></div><div><dt>Tags</dt><dd>{{ api.tags or '—' }}</dd></div></dl><p class="muted">{{ api.description or 'No description.' }}</p></article>
-  <article class="card"><h2>Add Endpoint</h2><form class="form-grid compact-form" method="post" action="/apis/{{ api.id }}/endpoints"><label><span>Name</span><input name="name" required></label><label><span>Method</span><select name="method">{% for method in methods %}<option>{{ method }}</option>{% endfor %}</select></label><label class="wide"><span>Path</span><input name="path" placeholder="/health" required></label><label class="wide"><span>Description</span><textarea name="description"></textarea></label><label class="check"><input type="checkbox" name="enabled" checked> Enabled</label><button class="btn primary wide" type="submit">Add Endpoint</button></form></article>
-</section>
-<section class="card">
-  <div class="card-head"><h2>Endpoints</h2><a class="btn ghost compact" href="/tester?api_id={{ api.id }}">Open Tester</a></div>
-  <div class="table-wrap"><table><thead><tr><th>Method</th><th>Path</th><th>Name</th><th>Status</th><th></th></tr></thead><tbody>{% for endpoint in endpoints %}<tr><td><span class="badge info">{{ endpoint.method }}</span></td><td><code>{{ endpoint.path }}</code></td><td>{{ endpoint.name }}</td><td>{{ 'enabled' if endpoint.enabled else 'disabled' }}</td><td><a href="/tester?api_id={{ api.id }}&endpoint_id={{ endpoint.id }}">Test</a></td></tr>{% else %}<tr><td colspan="5">No endpoints yet.</td></tr>{% endfor %}</tbody></table></div>
-</section>
+<div class="page-head"><div><p class="eyebrow">Depot · 上游详情</p><h1>{{ api.name }}</h1><p class="lead"><code>{{ api.base_url }}</code></p></div><div class="actions"><a class="btn" href="/tester?api_id={{ api.id }}">在测试台打开</a><a class="btn ghost" href="/apis">返回列表</a></div></div>
+<div class="grid two">
+  <section class="card">
+    <h2>概况</h2>
+    <dl class="kv-row"><div><dt>标识</dt><dd><code>{{ api.slug }}</code></dd></div><div><dt>认证</dt><dd>{{ api.auth_type }}</dd></div><div><dt>凭据环境变量</dt><dd><code>{{ api.secret_ref or '—' }}</code></dd></div><div><dt>标签</dt><dd>{{ api.tags or '—' }}</dd></div></dl>
+    <p class="muted small section-note">{{ api.description or '暂无描述。' }}</p>
+  </section>
+  <section class="card">
+    <h2>添加端点</h2>
+    <form class="form two" method="post" action="/apis/{{ api.id }}/endpoints">
+      <label class="field">名称<input name="name" required></label>
+      <label class="field">方法<select name="method">{% for method in methods %}<option>{{ method }}</option>{% endfor %}</select></label>
+      <label class="field wide">请求路径<input name="path" class="mono" placeholder="/health" required></label>
+      <label class="field wide">描述<textarea name="description" rows="2"></textarea></label>
+      <label class="check"><input type="checkbox" name="enabled" checked> 启用</label>
+      <div class="wide actions"><button class="btn primary" type="submit">添加端点</button></div>
+    </form>
+  </section>
+</div>
+<div class="block-title section-gap"><h2>接口端点</h2></div>
+<div class="card flush"><div class="table-wrap"><table>
+  <thead><tr><th>方法</th><th>请求路径</th><th>名称</th><th>状态</th><th></th></tr></thead>
+  <tbody>{% for endpoint in endpoints %}<tr><td><span class="method {{ endpoint.method|lower }}">{{ endpoint.method }}</span></td><td><code>{{ endpoint.path }}</code></td><td>{{ endpoint.name }}</td><td><span class="badge {{ 'ok' if endpoint.enabled else 'off' }}">{{ '已启用' if endpoint.enabled else '已停用' }}</span></td><td><a class="btn sm" href="/tester?api_id={{ api.id }}&endpoint_id={{ endpoint.id }}">测试</a></td></tr>{% else %}<tr><td colspan="5" class="empty">还没有端点。</td></tr>{% endfor %}</tbody>
+</table></div></div>
 {% endblock %}

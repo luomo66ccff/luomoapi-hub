@@ -1,109 +1,45 @@
-import os
-import sqlite3
-from pathlib import Path
+from contextlib import closing
 from typing import Any
 
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Depends, Request
 from fastapi.responses import JSONResponse, PlainTextResponse
-from fastapi.templating import Jinja2Templates
+
+from app.ai_catalog import snapshot
+from app.auth import optional_user
+from app.db import connect
+from app.web.templating import templates
 
 
 router = APIRouter()
-templates = Jinja2Templates(directory="app/web/templates")
-
-
-def get_db_path() -> str:
-    return os.getenv("DATABASE_PATH", "/app/data/luomoapi.db")
-
-
-def row_to_dict(row: sqlite3.Row) -> dict[str, Any]:
-    return {key: row[key] for key in row.keys()}
+EMPTY_STATS = {"enabled_routes": 0, "disabled_routes": 0, "documented_routes": 0}
 
 
 def get_public_route_stats() -> dict[str, int]:
-    db_path = get_db_path()
-
-    if not Path(db_path).exists():
-        return {
-            "enabled_routes": 0,
-            "disabled_routes": 0,
-            "documented_routes": 0,
-        }
-
-    conn = sqlite3.connect(db_path)
-    conn.row_factory = sqlite3.Row
-
     try:
-        documented = conn.execute(
-            """
-            SELECT COUNT(*) AS c
-            FROM public_gateway_routes
-            WHERE public_docs = 1
-            """
-        ).fetchone()["c"]
-
-        enabled = conn.execute(
-            """
-            SELECT COUNT(*) AS c
-            FROM public_gateway_routes
-            WHERE public_docs = 1 AND enabled = 1
-            """
-        ).fetchone()["c"]
-        disabled = conn.execute(
-            """
-            SELECT COUNT(*) AS c
-            FROM public_gateway_routes
-            WHERE public_docs = 1 AND enabled = 0
-            """
-        ).fetchone()["c"]
-
-        return {
-            "enabled_routes": int(enabled or 0),
-            "disabled_routes": int(disabled or 0),
-            "documented_routes": int(documented or 0),
-        }
+        with closing(connect()) as conn:
+            row = conn.execute(
+                "SELECT COUNT(*) AS documented, COALESCE(SUM(enabled = 1), 0) AS enabled FROM public_gateway_routes WHERE public_docs = 1"
+            ).fetchone()
     except Exception:
-        return {
-            "enabled_routes": 0,
-            "disabled_routes": 0,
-            "documented_routes": 0,
-        }
-    finally:
-        conn.close()
+        return dict(EMPTY_STATS)
+    documented, enabled = int(row["documented"] or 0), int(row["enabled"] or 0)
+    return {"enabled_routes": enabled, "disabled_routes": documented - enabled, "documented_routes": documented}
 
 
 def get_public_routes() -> list[dict[str, Any]]:
-    db_path = get_db_path()
-
-    if not Path(db_path).exists():
-        return []
-
-    conn = sqlite3.connect(db_path)
-    conn.row_factory = sqlite3.Row
-
     try:
-        rows = conn.execute(
-            """
-            SELECT
-                id,
-                name,
-                public_path,
-                target_method,
-                required_scope,
-                enabled,
-                public_docs,
-                allow_anonymous
-            FROM public_gateway_routes
-            WHERE public_docs = 1
-            ORDER BY enabled DESC, name ASC
-            """
-        ).fetchall()
-
-        return [row_to_dict(row) for row in rows]
+        with closing(connect()) as conn:
+            rows = conn.execute(
+                """
+                SELECT id, name, public_path, target_method, required_scope, enabled, public_docs, allow_anonymous
+                FROM public_gateway_routes
+                WHERE public_docs = 1
+                ORDER BY enabled DESC, name ASC
+                """
+            ).fetchall()
     except Exception:
         return []
-    finally:
-        conn.close()
+    return [dict(row) for row in rows]
 
 
 @router.get("/api/public/stats")
@@ -132,17 +68,16 @@ def well_known_security_txt():
 
 
 def security_text() -> str:
-    contact = os.getenv("SECURITY_CONTACT", "security@example.com").strip()
-    canonical_base = os.getenv("APP_BASE_URL", "http://localhost:8790").rstrip("/")
     return "\n".join(
         [
-            f"Contact: mailto:{contact}",
+            "Contact: mailto:security@luomo.moe",
+            "Contact: mailto:luomo0712@qq.com",
             "Preferred-Languages: zh, en",
-            f"Canonical: {canonical_base}/.well-known/security.txt",
-            f"Policy: {canonical_base}/security",
+            "Canonical: https://api.luomo.moe/.well-known/security.txt",
+            "Policy: https://api.luomo.moe/security",
             "",
-            "Scope: public portal, developer console, API key gateway, and account flows.",
-            "Out of scope: denial-of-service testing, social engineering, credential stuffing, destructive testing, and attempts against unrelated services.",
+            "Scope: api.luomo.moe public portal, developer console, API key gateway, and LuomoAPI Hub account flows.",
+            "Out of scope: denial-of-service testing, social engineering, credential stuffing, destructive testing, and attempts against SSH, firewall, Cloudflare records outside api.luomo.moe, or unrelated Luomo services.",
             "Please do not include secrets, API keys, passwords, cookies, or private user data in reports.",
             "",
         ]
@@ -150,26 +85,10 @@ def security_text() -> str:
 
 
 @router.get("/")
-def public_home(request: Request):
-    stats = get_public_route_stats()
-    return templates.TemplateResponse(
-        "index.html",
-        {
-            "request": request,
-            **stats,
-        },
-    )
+async def public_home(request: Request, user=Depends(optional_user)):
+    return templates.TemplateResponse(request, "index.html", {"user": user, "catalog": await snapshot(), "routes": get_public_routes(), **get_public_route_stats()})
 
 
 @router.get("/docs")
-def public_docs(request: Request):
-    routes = get_public_routes()
-    stats = get_public_route_stats()
-    return templates.TemplateResponse(
-        "docs.html",
-        {
-            "request": request,
-            "routes": routes,
-            **stats,
-        },
-    )
+def public_docs(request: Request, user=Depends(optional_user)):
+    return templates.TemplateResponse(request, "docs.html", {"user": user, "routes": get_public_routes(), **get_public_route_stats()})

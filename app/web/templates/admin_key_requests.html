@@ -1,97 +1,39 @@
 {% extends "base.html" %}
-
-{% block title %}Key Requests · LuomoAPI Hub{% endblock %}
-
+{% block title %}密钥申请 · LuomoAPI{% endblock %}
 {% block content %}
-<div class="page-header">
-  <div>
-    <div class="eyebrow">Admin Console</div>
-    <h1>API Key Requests</h1>
-    <p class="page-subtitle">
-      Review developer API key requests and issue scoped credentials. Generated keys are shown only once.
-    </p>
-  </div>
-</div>
-
+{% set states = {'approved':('ok','已签发'),'pending':('warn','待审核'),'rejected':('off','已拒绝')} %}
+<div class="page-head"><div><p class="eyebrow">Requests · 密钥申请</p><h1>密钥申请</h1><p class="lead">自助签发的 AI 密钥会自动记为“已签发”。需要业务权限的申请在这里设置协议、模型、配额与有效期；完整密钥只显示一次。</p></div></div>
+<div class="notice"><strong>按权限范围签发</strong><p>AI 权限可选 <code>models:read</code>、<code>chat:completions</code>、<code>responses:create</code>，并填写允许的模型 ID；业务权限按路由 scope 填写。</p></div>
 {% if new_key %}
-<section class="docs-note key-reveal">
-  <strong>New API Key generated</strong>
-  <p>This key is shown only once. Copy it now and send it to the approved developer through a safe channel.</p>
-  <div class="code-block">
-<pre><code>{{ new_key }}</code></pre>
-  </div>
-  {% if prefix %}
-  <p class="muted">Prefix: <code>{{ prefix }}</code></p>
-  {% endif %}
-</section>
+<div class="notice success"><strong>新密钥已生成</strong><p>只显示这一次，请通过安全渠道交给申请人。</p>
+  <div class="key-output section-note"><code id="pending-issued-key">{{ new_key }}</code><button type="button" class="btn primary" data-copy-target="pending-issued-key">复制完整密钥</button></div>
+  {% if prefix %}<p class="muted small">前缀 <code>{{ prefix }}</code></p>{% endif %}
+</div>
 {% endif %}
-
-<section class="card table-wrap">
-  <table>
-    <thead>
-      <tr>
-        <th>Request</th>
-        <th>User</th>
-        <th>Scopes</th>
-        <th>Reason</th>
-        <th>Status</th>
-        <th>Admin note</th>
-        <th>Action</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for item in requests %}
-      <tr>
-        <td>
-          <strong>{{ item.name }}</strong><br>
-          <span class="muted">{{ item.created_at }}</span>
-        </td>
-        <td>{{ item.username or "—" }}</td>
-        <td><code>{{ item.requested_scopes or "—" }}</code></td>
-        <td>{{ item.requested_reason or "—" }}</td>
-        <td>
-          <span class="badge {{ 'badge-success' if item.status == 'approved' else 'badge-muted' }}">
-            {{ item.status }}
-          </span>
-        </td>
-        <td>{{ item.admin_note or "—" }}</td>
-        <td>
-          {% if item.status == "pending" %}
-          <form method="post" action="/admin/key-requests/{{ item.id }}/approve" class="stack-form">
-            <label>
-              <span>Scopes</span>
-              <input name="scopes" value="{{ item.requested_scopes or 'luomocore:health' }}">
-            </label>
-            <label>
-              <span>Allowed routes</span>
-              <input name="allowed_routes" value="luomocore/health">
-            </label>
-            <label>
-              <span>Rate / min</span>
-              <input name="rate_limit_per_minute" value="60">
-            </label>
-            <label>
-              <span>Daily quota</span>
-              <input name="daily_quota" value="1000">
-            </label>
-            <button class="btn btn-primary compact" type="submit">Approve & Generate Key</button>
-          </form>
-
-          <form method="post" action="/admin/key-requests/{{ item.id }}/reject" class="stack-form reject-form">
-            <input name="admin_note" placeholder="Reason for rejection">
-            <button class="btn ghost compact danger-soft" type="submit">Reject</button>
-          </form>
-          {% else %}
-            —
-          {% endif %}
-        </td>
-      </tr>
-      {% else %}
-      <tr>
-        <td colspan="7" class="empty">No API key requests.</td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
-</section>
+<div class="stack">
+  {% for item in requests %}
+  {% set state = states.get(item.status, ('off', item.status)) %}
+  <article class="card request-card">
+    <div class="block-title"><div><h2>{{ item.name }}</h2><span class="muted small">{{ item.username or '—' }} · {{ item.created_at|utc }} UTC</span></div><span class="badge {{ state[0] }}">{{ state[1] }}</span></div>
+    <dl class="kv-row"><div><dt>申请权限</dt><dd><code>{{ item.requested_scopes or '—' }}</code></dd></div><div><dt>用途</dt><dd>{{ item.requested_reason or '—' }}</dd></div><div><dt>备注</dt><dd>{{ item.admin_note or '—' }}</dd></div></dl>
+    {% if item.status == 'pending' %}
+    <form method="post" action="/admin/key-requests/{{ item.id }}/approve" class="form two section-note">
+      <label class="field">权限范围<input name="scopes" class="mono" value="{{ item.requested_scopes or 'models:read,chat:completions' }}"></label>
+      <label class="field">允许的模型 ID（逗号分隔）<input name="models" class="mono" placeholder="gpt-6-luna,gpt-6-sol"></label>
+      <label class="field">每分钟请求数（0 不限）<input name="rate_limit_per_minute" type="number" min="0" value="60"></label>
+      <label class="field">每日请求数（0 不限）<input name="daily_quota" type="number" min="0" value="1000"></label>
+      <label class="field">每月请求数（0 不限）<input name="monthly_quota" type="number" min="0" value="30000"></label>
+      <label class="field">有效期（UTC，可留空）<input name="expires_at" class="mono" placeholder="2026-12-31T23:59:59Z"></label>
+      <div class="wide actions"><button class="btn primary" type="submit">批准并签发密钥</button></div>
+    </form>
+    <form method="post" action="/admin/key-requests/{{ item.id }}/reject" class="inline-row section-note">
+      <label class="field grow"><span class="sr-only">拒绝理由</span><input name="admin_note" placeholder="拒绝理由（会显示给申请人）"></label>
+      <button class="btn danger sm" type="submit">拒绝</button>
+    </form>
+    {% endif %}
+  </article>
+  {% else %}
+  <div class="card empty-state"><strong>没有密钥申请</strong>自助签发的记录也会出现在这里。</div>
+  {% endfor %}
+</div>
 {% endblock %}

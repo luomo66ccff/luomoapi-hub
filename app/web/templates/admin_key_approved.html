@@ -1,10 +1,15 @@
 {% extends "base.html" %}
-{% block title %}Key Approved - LuomoAPI Hub{% endblock %}
+{% block title %}密钥已签发 · LuomoAPI{% endblock %}
 {% block content %}
-<section class="page-head"><div><p class="eyebrow">Credential Issued</p><h1>API key generated</h1><p class="muted">Copy it now. It will not be stored in readable form or shown again.</p></div></section>
-<section class="card key-reveal">
-  <span class="badge success">Prefix {{ prefix }}</span>
-  <pre>{{ new_key }}</pre>
-  <a class="btn primary" href="/admin/key-requests">Back to requests</a>
-</section>
+<div class="page-head"><div><p class="eyebrow">Issued · 已出票</p><h1>API 密钥已签发</h1><p class="lead">请立即复制并保存。这是完整密钥唯一的展示机会，离开后无法再次查看。</p></div></div>
+<article class="ticket reveal">
+  <div class="stub"><b>NEW</b><span>{{ prefix }}</span></div>
+  <div class="body">
+    <div class="row1"><div><h3>完整密钥</h3><span class="serial">前缀 {{ prefix }}</span></div><span class="badge ok">已启用</span></div>
+    <div class="key-output"><code id="issued-api-key">{{ new_key }}</code><button class="btn primary" type="button" data-copy-target="issued-api-key">复制完整密钥</button></div>
+    <p class="muted small">仅用于受信任的应用，请勿放进公开仓库或前端代码。</p>
+    <div class="stripe" aria-hidden="true"></div>
+  </div>
+</article>
+<div class="actions section-gap"><a class="btn" href="/admin/key-requests">返回申请列表</a></div>
 {% endblock %}

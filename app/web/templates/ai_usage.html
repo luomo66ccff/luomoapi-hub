@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+{% from "_macros.html" import roundel %}
+{% block title %}AI 用量 · LuomoAPI{% endblock %}
+{% block content %}
+{% set outcome_labels = {'succeeded':'成功','completed':'完成','failed':'失败','streamerror':'流式异常','stream_incomplete':'流未完整结束','client_disconnect':'客户端已断开','upstream_error':'上游异常','gateway_error':'网关异常','in_flight':'进行中','timeout':'超时'} %}
+{% set credit_labels = {'settled':'已结算','released':'已释放','held':'已冻结','reserved':'已冻结','reconciliation_required':'待核账','legacy_unbilled':'历史未计费','unbilled':'未计费','admin_exempt':'管理员免计费'} %}
+{% set s = usage.summary %}
+<div class="page-head">
+  <div><p class="eyebrow">{{ 'All riders · 全站' if all_users else 'Rides · 用量' }}</p><h1>{{ '全站 AI 用量' if all_users else 'AI 用量' }}</h1><p class="lead">最近 7 天（UTC）。记录模型、结果和上游实际回报的 token，不保存提示词或回答正文。</p></div>
+  <div class="actions"><a class="btn" href="{{ '/admin/ai-usage' if all_users else '/developer/usage' }}">刷新 <span class="arrow" aria-hidden="true">↻</span></a>{% if not all_users %}<a class="btn ghost" href="/developer/credits">积分流水</a>{% endif %}</div>
+</div>
+
+<div class="grid four">
+  <div class="card metric"><span class="label">生成请求</span><span class="value">{{ s.requests }}</span><span class="hint">{{ s.in_flight }} 个进行中</span></div>
+  <div class="card metric"><span class="label">成功 / 失败</span><span class="value">{{ s.succeeded }}<span class="muted"> / </span>{{ s.failed }}</span><span class="hint">按最终结果统计</span></div>
+  <div class="card metric"><span class="label">已回报 token</span><span class="value">{{ '{:,}'.format(s.total_tokens) if s.total_tokens is not none else '—' }}</span><span class="hint">输入 {{ '{:,}'.format(s.input_tokens) if s.input_tokens is not none else '—' }} · 输出 {{ '{:,}'.format(s.output_tokens) if s.output_tokens is not none else '—' }}</span></div>
+  <div class="card metric"><span class="label">平均耗时</span><span class="value">{{ s.avg_latency_ms|round|int if s.avg_latency_ms is not none else '—' }}<span class="muted unit"> ms</span></span><span class="hint">已完成请求</span></div>
+</div>
+
+{% if usage.daily %}
+{% set peak = usage.daily|map(attribute='requests')|max %}
+<section class="card section-gap chart-card">
+  <div class="block-title"><h2>每日请求</h2><span class="chart-legend"><span class="key ok"></span>成功<span class="key fail"></span>失败</span></div>
+  {% set n = usage.daily|length %}{% set slot = 700 / n %}{% set bar = [slot * 0.56, 56]|min %}
+  <svg class="daily-chart" viewBox="0 0 700 200" role="img" aria-label="最近 7 天每日请求数">
+    <line class="axis" x1="0" y1="168" x2="700" y2="168"/>
+    {% for day in usage.daily %}
+    {% set x = slot * loop.index0 + (slot - bar) / 2 %}
+    {% set h_ok = (day.succeeded / peak * 140) if peak else 0 %}
+    {% set h_fail = (day.failed / peak * 140) if peak else 0 %}
+    <g><title>{{ day.day }}：{{ day.requests }} 次（成功 {{ day.succeeded }}，失败 {{ day.failed }}）</title>
+      <rect class="bar-ok" x="{{ x|round(1) }}" y="{{ (168 - h_ok)|round(1) }}" width="{{ bar|round(1) }}" height="{{ h_ok|round(1) }}" rx="3"/>
+      <rect class="bar-fail" x="{{ x|round(1) }}" y="{{ (168 - h_ok - h_fail)|round(1) }}" width="{{ bar|round(1) }}" height="{{ h_fail|round(1) }}" rx="3"/>
+      <text class="bar-value" x="{{ (x + bar / 2)|round(1) }}" y="{{ (160 - h_ok - h_fail)|round(1) }}">{{ day.requests }}</text>
+      <text class="bar-label" x="{{ (x + bar / 2)|round(1) }}" y="190">{{ day.day[5:] }}</text>
+    </g>
+    {% endfor %}
+  </svg>
+</section>
+{% endif %}
+
+<div class="block-title section-gap"><h2>按模型</h2></div>
+<div class="card flush"><div class="table-wrap"><table>
+  <thead><tr><th>模型</th><th class="right">请求</th><th class="right">成功</th><th class="right">失败</th><th class="right">已回报 token</th></tr></thead>
+  <tbody>
+  {% for row in usage.by_model %}
+  <tr><td><div class="cell-model">{{ roundel(row.model or '?', 'sm') }}<code>{{ row.model or '未知' }}</code></div></td><td class="num right">{{ row.requests }}</td><td class="num right">{{ row.succeeded }}</td><td class="num right">{{ row.failed }}</td><td class="num right">{{ '{:,}'.format(row.total_tokens) if row.total_tokens is not none else '—' }}</td></tr>
+  {% else %}
+  <tr><td colspan="5" class="empty">还没有 AI 调用记录。{% if not all_users %}<a href="/developer/playground">发送第一次请求</a>。{% endif %}</td></tr>
+  {% endfor %}
+  </tbody>
+</table></div></div>
+
+<div class="block-title section-gap"><h2>最近调用</h2><span class="muted small">最多 100 条 · 用请求 ID 定位问题</span></div>
+<div class="card flush"><div class="table-wrap"><table>
+  <thead><tr><th>时间 / 请求 ID</th><th>模型 / 协议</th><th>结果</th><th class="right">耗时</th><th class="right">token</th><th class="right">积分</th></tr></thead>
+  <tbody>
+  {% for row in usage.recent %}
+  {% set good = row.outcome in ['succeeded', 'completed'] %}
+  <tr>
+    <td><span class="num">{{ row.created_at|utc }}</span><span class="sub mono">{{ row.request_id or '—' }}</span></td>
+    <td><div class="cell-model">{{ roundel(row.model or '?', 'sm') }}<div><code>{{ row.model or '—' }}</code><span class="sub">{{ row.protocol }}{{ ' · 流式' if row.streamed else '' }}</span></div></div></td>
+    <td><span class="badge {{ 'ok' if good else 'warn' if row.outcome == 'in_flight' else 'danger' }}">{{ outcome_labels.get(row.outcome, row.outcome) }}</span><span class="sub mono">HTTP {{ row.status_code or '—' }}</span></td>
+    <td class="num right">{{ row.response_time_ms if row.response_time_ms is not none else '—' }} ms</td>
+    <td class="num right">{{ '{:,}'.format(row.total_tokens) if row.total_tokens is not none else '—' }}</td>
+    <td class="num right">{{ row.charged_credits|credit }}<span class="sub">{{ credit_labels.get(row.credit_status, row.credit_status or '—') }}</span></td>
+  </tr>
+  {% else %}
+  <tr><td colspan="6" class="empty">暂无记录</td></tr>
+  {% endfor %}
+  </tbody>
+</table></div></div>
+<p class="muted small section-note">token 只累加上游实际回报的值，缺失显示“—”。生成按调用时保存的官方标准价格结算；缺少可靠用量的请求等待核账，历史调用不补扣。</p>
+{% endblock %}

@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block title %}确认充值 · LuomoAPI{% endblock %}
+{% block content %}
+<div class="page-head"><div><p class="eyebrow">Top up · 充值</p><h1>确认金额，继续支付</h1><p class="lead">人民币 <span class="num">{{ amount_cny }}</span> 元，可获得 <span class="num">{{ credits }}</span> 积分。</p></div></div>
+<section class="card narrow-card">
+  <p>付款将在 Stripe 的安全页面完成。余额只在支付渠道确认到账后增加，返回积分页不会触发加分。</p>
+  <p>订单号 <code>{{ order.id }}</code></p>
+  <div class="actions"><a class="btn primary" href="/developer/credits/orders/{{ order.id }}/pay" rel="noreferrer">继续支付 <span class="arrow" aria-hidden="true">↗</span></a><a class="btn" href="/developer/credits">返回积分页</a></div>
+  <p class="muted small section-note">支付后回到积分页刷新余额；若尚未到账，请稍后再刷新，或把订单号提供给管理员。</p>
+</section>
+{% endblock %}

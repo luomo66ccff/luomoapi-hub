@@ -1,4 +1,5 @@
 import sqlite3
+from contextlib import closing
 from pathlib import Path
 
 from app.config import ensure_dirs, settings
@@ -77,7 +78,7 @@ CREATE TABLE IF NOT EXISTS users (
     email TEXT NOT NULL UNIQUE,
     password_hash TEXT NOT NULL,
     role TEXT NOT NULL DEFAULT 'developer',
-    status TEXT NOT NULL DEFAULT 'pending',
+    status TEXT NOT NULL DEFAULT 'active',
     usage_reason TEXT,
     email_verified INTEGER DEFAULT 0,
     email_verification_token_hash TEXT,
@@ -86,6 +87,12 @@ CREATE TABLE IF NOT EXISTS users (
     created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL,
     last_login_at TEXT
+);
+CREATE TABLE IF NOT EXISTS verification_email_limits (
+    bucket_hash TEXT PRIMARY KEY,
+    window_started_at TEXT NOT NULL,
+    last_sent_at TEXT NOT NULL,
+    send_count INTEGER NOT NULL
 );
 CREATE TABLE IF NOT EXISTS api_keys (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -96,6 +103,7 @@ CREATE TABLE IF NOT EXISTS api_keys (
     status TEXT NOT NULL DEFAULT 'pending',
     scopes TEXT,
     allowed_routes TEXT,
+    model_policy TEXT NOT NULL DEFAULT 'all',
     rate_limit_per_minute INTEGER DEFAULT 60,
     daily_quota INTEGER DEFAULT 1000,
     monthly_quota INTEGER DEFAULT 30000,
@@ -154,36 +162,103 @@ CREATE TABLE IF NOT EXISTS api_usage_logs (
     error_summary TEXT,
     request_preview TEXT,
     response_preview TEXT,
+    request_id TEXT,
+    protocol TEXT,
+    model TEXT,
+    streamed INTEGER DEFAULT 0,
+    outcome TEXT,
+    started_at TEXT,
+    completed_at TEXT,
+    first_byte_ms INTEGER,
+    input_tokens INTEGER,
+    output_tokens INTEGER,
+    total_tokens INTEGER,
+    usage_reported INTEGER DEFAULT 0,
     FOREIGN KEY(user_id) REFERENCES users(id),
     FOREIGN KEY(api_key_id) REFERENCES api_keys(id),
     FOREIGN KEY(route_id) REFERENCES public_gateway_routes(id)
+);
+CREATE TABLE IF NOT EXISTS api_key_models (
+    api_key_id INTEGER NOT NULL,
+    model_id TEXT NOT NULL,
+    PRIMARY KEY (api_key_id, model_id),
+    FOREIGN KEY(api_key_id) REFERENCES api_keys(id) ON DELETE CASCADE
 );
 """
 
 
 def connect() -> sqlite3.Connection:
     ensure_dirs()
-    conn = sqlite3.connect(settings.database_path)
+    # A short busy timeout lets concurrent reservation transactions queue
+    # briefly.  The gateway still closes this connection before any HTTP I/O.
+    conn = sqlite3.connect(settings.database_path, timeout=30.0)
     conn.row_factory = sqlite3.Row
+    conn.execute("PRAGMA busy_timeout=30000")
+    conn.execute("PRAGMA foreign_keys=ON")
     return conn
 
 
 def init_db() -> None:
     ensure_dirs()
-    with connect() as conn:
+    with closing(connect()) as conn, conn:
         conn.executescript(SCHEMA)
+        conn.execute("BEGIN IMMEDIATE")
         _ensure_columns(conn)
+        # Local import avoids coupling the accounting module to connection setup.
+        from app.credit_ledger import initialize_credit_schema, recover_stale_holds
+        initialize_credit_schema(conn)
+        recover_stale_holds(conn)
         conn.commit()
 
 
 def _ensure_columns(conn: sqlite3.Connection) -> None:
-    columns = {row["name"] for row in conn.execute("PRAGMA table_info(users)").fetchall()}
+    def columns(table: str) -> set[str]:
+        return {row["name"] for row in conn.execute(f"PRAGMA table_info({table})").fetchall()}
+
     additions = {
-        "email_verified": "ALTER TABLE users ADD COLUMN email_verified INTEGER DEFAULT 0",
-        "email_verification_token_hash": "ALTER TABLE users ADD COLUMN email_verification_token_hash TEXT",
-        "email_verification_sent_at": "ALTER TABLE users ADD COLUMN email_verification_sent_at TEXT",
-        "email_verified_at": "ALTER TABLE users ADD COLUMN email_verified_at TEXT",
+        "users": {
+            "email_verified": "ALTER TABLE users ADD COLUMN email_verified INTEGER DEFAULT 0",
+            "email_verification_token_hash": "ALTER TABLE users ADD COLUMN email_verification_token_hash TEXT",
+            "email_verification_sent_at": "ALTER TABLE users ADD COLUMN email_verification_sent_at TEXT",
+            "email_verified_at": "ALTER TABLE users ADD COLUMN email_verified_at TEXT",
+        },
+        "api_keys": {
+            "model_policy": "ALTER TABLE api_keys ADD COLUMN model_policy TEXT NOT NULL DEFAULT 'all'",
+        },
+        "api_usage_logs": {
+            "request_id": "ALTER TABLE api_usage_logs ADD COLUMN request_id TEXT",
+            "protocol": "ALTER TABLE api_usage_logs ADD COLUMN protocol TEXT",
+            "model": "ALTER TABLE api_usage_logs ADD COLUMN model TEXT",
+            "streamed": "ALTER TABLE api_usage_logs ADD COLUMN streamed INTEGER DEFAULT 0",
+            "outcome": "ALTER TABLE api_usage_logs ADD COLUMN outcome TEXT",
+            "started_at": "ALTER TABLE api_usage_logs ADD COLUMN started_at TEXT",
+            "completed_at": "ALTER TABLE api_usage_logs ADD COLUMN completed_at TEXT",
+            "first_byte_ms": "ALTER TABLE api_usage_logs ADD COLUMN first_byte_ms INTEGER",
+            "input_tokens": "ALTER TABLE api_usage_logs ADD COLUMN input_tokens INTEGER",
+            "output_tokens": "ALTER TABLE api_usage_logs ADD COLUMN output_tokens INTEGER",
+            "total_tokens": "ALTER TABLE api_usage_logs ADD COLUMN total_tokens INTEGER",
+            "usage_reported": "ALTER TABLE api_usage_logs ADD COLUMN usage_reported INTEGER DEFAULT 0",
+        },
     }
-    for column, statement in additions.items():
-        if column not in columns:
-            conn.execute(statement)
+    for table, table_additions in additions.items():
+        existing = columns(table)
+        for column, statement in table_additions.items():
+            if column not in existing:
+                conn.execute(statement)
+
+    # These objects are additive and can be created on an existing production
+    # database after ALTER TABLE has completed.
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS api_key_models (
+            api_key_id INTEGER NOT NULL,
+            model_id TEXT NOT NULL,
+            PRIMARY KEY (api_key_id, model_id),
+            FOREIGN KEY(api_key_id) REFERENCES api_keys(id) ON DELETE CASCADE
+        )
+        """
+    )
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_api_keys_prefix_status ON api_keys(key_prefix, status)")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_api_usage_key_started ON api_usage_logs(api_key_id, started_at)")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_api_usage_user_started ON api_usage_logs(user_id, started_at)")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_api_usage_request_id ON api_usage_logs(request_id)")

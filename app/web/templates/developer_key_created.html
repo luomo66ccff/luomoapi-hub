@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block title %}领取 API 密钥 · LuomoAPI{% endblock %}
+{% block content %}
+<div class="page-head"><div><p class="eyebrow">Issued · 已出票</p><h1>{{ '这张票已经出过了' if result.duplicate else '你的 API 密钥已就绪' }}</h1><p class="lead">{{ '刷新或重复提交不会再次签发。' if result.duplicate else '完整密钥只在这一页显示一次，请现在复制并保存到密码管理器。' }}</p></div></div>
+{% if result.raw_key %}
+<article class="ticket reveal">
+  <div class="stub"><b>NEW</b><span>IX·{{ '%04d'|format(result.key_id) }}</span></div>
+  <div class="body">
+    <div class="row1"><div><h3>完整密钥</h3><span class="serial">前缀 {{ result.prefix }}</span></div><span class="badge ok">已启用</span></div>
+    <div class="key-output"><code id="issued-key">{{ result.raw_key }}</code><button class="btn primary" type="button" data-copy-target="issued-key">复制密钥</button></div>
+    <p class="muted small">支持模型目录、Chat Completions 和 Responses。所有密钥共用账户积分；余额不足时生成请求会返回 402。只在服务端或受信任的本地应用里使用。</p>
+    <div class="stripe" aria-hidden="true"></div>
+  </div>
+</article>
+{% else %}
+<div class="notice warn"><strong>这次申请已经签发过密钥</strong><p>如果没有保存完整密钥，请回到列表撤销原密钥后重新签发。</p></div>
+{% endif %}
+<div class="actions section-gap"><a class="btn primary" href="/developer/keys">返回密钥列表</a><a class="btn" href="/developer/credits">兑换积分</a><a class="btn ghost" href="/models#configuration">生成客户端配置</a></div>
+{% endblock %}

@@ -1,0 +1,76 @@
+{% macro roundel(model_id, size='') -%}
+{%- set line = line_for(model_id) -%}
+<span class="roundel {{ size }}" data-line="{{ line.family }}" aria-hidden="true"><b>{{ line.letter }}</b><i>{{ line.number }}</i></span>
+{%- endmacro %}
+
+{% macro model_state(model) -%}
+<span class="lamp {{ model.state.tone }}">{{ model.state.label }}</span>
+{%- endmacro %}
+
+{% macro board_row(model) -%}
+<li class="board-row" data-model="{{ model.id }}">
+  {{ roundel(model.id) }}
+  <div class="model">{{ model.id }}<small>{{ model.name if model.name != model.id else model.category }}</small></div>
+  <div class="use">{{ model.category }}<small>{% if model.verification %}已实测 {{ model.verification.protocols|length }} 种协议{% elif model.text_candidate %}可计费 · 待本站实测{% else %}—{% endif %}</small></div>
+  {{ model_state(model) }}
+</li>
+{%- endmacro %}
+
+{% macro board(catalog, limit=None, title='发车表', more=True) -%}
+{%- set models = catalog.models[:limit] if limit else catalog.models -%}
+<section class="board" aria-label="模型线路发车表" data-board-live="/api/public/ai-catalog" data-limit="{{ limit or '' }}" data-refresh="{{ catalog.cache_seconds or 30 }}">
+  <div class="board-head">
+    <div class="title"><strong data-board-title>{{ title }}</strong><small data-board-sub>DEPARTURES · MODEL LINES</small></div>
+    <div class="clock">{% if catalog.updated_at %}<time datetime="{{ catalog.updated_at }}" data-local data-board-clock>{{ catalog.updated_at[11:16] }}</time>{% endif %}<small data-board-note>{{ catalog.cache_seconds }} 秒刷新</small></div>
+  </div>
+  <div class="board-cols" aria-hidden="true"><span>线路</span><span>模型</span><span>用途</span><span>状态</span></div>
+  <ol class="board-list" aria-live="polite" aria-relevant="additions removals">
+    {% for model in models %}{{ board_row(model) }}{% endfor %}
+  </ol>
+  <p class="board-empty" {% if models %}hidden{% endif %}>暂时读不到上游模型目录。稍后刷新，或查看<a href="/status">服务状态</a>。</p>
+  <div class="board-foot"><span>目录探测不发起付费生成 · 可用模型以你的密钥为准</span>{% if more %}<a href="/models" data-board-more {% if not catalog.model_count %}hidden{% endif %}>全部 <span data-board-count>{{ catalog.model_count }}</span> 条线路 →</a>{% endif %}</div>
+</section>
+{%- endmacro %}
+
+{% macro sdk_screen(model='gpt-6-luna', id='sdk') -%}
+<div class="screen" data-tabs>
+  <div class="screen-bar">
+    <div class="screen-tabs" role="tablist" aria-label="示例语言">
+      <button type="button" role="tab" data-tab="python" aria-selected="true">Python</button>
+      <button type="button" role="tab" data-tab="node" aria-selected="false" tabindex="-1">Node.js</button>
+      <button type="button" role="tab" data-tab="curl" aria-selected="false" tabindex="-1">cURL</button>
+    </div>
+    <button class="copy" type="button" data-copy-visible>复制</button>
+  </div>
+<pre data-panel="python" id="{{ id }}-python"><span class="c"># pip install openai</span>
+<span class="k">import</span> os
+<span class="k">from</span> openai <span class="k">import</span> OpenAI
+
+client = OpenAI(
+    base_url=<span class="s">"https://api.luomo.moe/v1"</span>,
+    api_key=os.environ[<span class="s">"LUOMO_API_KEY"</span>],
+)
+reply = client.chat.completions.create(
+    model=<span class="s">"{{ model }}"</span>,
+    messages=[{<span class="s">"role"</span>: <span class="s">"user"</span>, <span class="s">"content"</span>: <span class="s">"你好"</span>}],
+)
+print(reply.choices[0].message.content)</pre>
+<pre data-panel="node" id="{{ id }}-node" hidden><span class="c">// npm install openai · 在服务端运行</span>
+<span class="k">import</span> OpenAI <span class="k">from</span> <span class="s">'openai'</span>;
+
+<span class="k">const</span> client = <span class="k">new</span> OpenAI({
+  baseURL: <span class="s">'https://api.luomo.moe/v1'</span>,
+  apiKey: process.env.LUOMO_API_KEY,
+});
+<span class="k">const</span> reply = <span class="k">await</span> client.chat.completions.create({
+  model: <span class="s">'{{ model }}'</span>,
+  messages: [{ role: <span class="s">'user'</span>, content: <span class="s">'你好'</span> }],
+});
+console.log(reply.choices[0].message.content);</pre>
+<pre data-panel="curl" id="{{ id }}-curl" hidden><span class="k">curl</span> https://api.luomo.moe/v1/chat/completions \
+  -H <span class="s">"Authorization: Bearer $LUOMO_API_KEY"</span> \
+  -H <span class="s">"Content-Type: application/json"</span> \
+  -d <span class="s">'{"model": "{{ model }}", "messages": [{"role": "user", "content": "你好"}]}'</span></pre>
+  <div class="screen-foot"><span>OpenAI 兼容 · Chat Completions</span><span>密钥放在服务端环境变量</span></div>
+</div>
+{%- endmacro %}

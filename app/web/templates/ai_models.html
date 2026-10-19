@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+{% from "_macros.html" import roundel %}
+{% block title %}模型线路 · LuomoAPI{% endblock %}
+{% block description %}LuomoAPI 当前可用的模型线路、用途、实测协议与客户端配置生成器。{% endblock %}
+{% block head_extra %}<script src="{{ asset('ai.js') }}" defer></script>{% endblock %}
+{% block page %}
+<div class="page-head">
+  <div><p class="eyebrow">Lines · 模型线路</p><h1>选一条线路，接上就走。</h1><p class="lead">统一地址、明确权限、可复制的配置。目录每 30 秒从上游刷新一次，当前 {{ catalog.model_count }} 条线路中 {{ catalog.billable_count|default(0) }} 条可用积分调用。</p></div>
+  <div class="actions">{% if user %}<a class="btn primary" href="/developer/playground">在线试用 <span class="arrow" aria-hidden="true">→</span></a>{% else %}<a class="btn primary" href="/register">领取密钥 <span class="arrow" aria-hidden="true">→</span></a>{% endif %}<a class="btn" href="/pricing">价格</a></div>
+</div>
+
+<div class="grid two">
+  <section class="card">
+    <p class="kicker">Base URL</p>
+    <div class="url-plate"><span class="tag">V1</span><code id="ai-base">https://api.luomo.moe/v1</code><button type="button" data-copy-target="ai-base">复制</button></div>
+    <p class="muted model-note">客户端选择 <strong>OpenAI Compatible</strong>，填入个人 API Key 与准确的模型 ID；地址末尾的 <code>/v1</code> 只写一次。</p>
+  </section>
+  <section class="card">
+    <p class="kicker">First ride · 首次接入</p>
+    <ol class="num-list">
+      <li><a href="/developer/keys">领取密钥</a>：注册用户可直接创建，包含目录与两种调用协议。</li>
+      <li>在<a href="/developer/credits">积分页</a>兑换积分；读取模型目录不消耗积分。</li>
+      <li>复制下方示例，到<a href="/developer/usage">用量页</a>核对结果和扣费。</li>
+    </ol>
+  </section>
+</div>
+
+<div class="block-title section-gap"><h2>线路一览</h2><a class="text-link" href="/status">服务状态</a></div>
+<p class="muted">用途参考模型官方说明；“已实测”只覆盖标注的协议与日期，不保证全部参数、工具或视觉能力。目录可见也不代表你的密钥已获授权。</p>
+<div class="line-cards">
+  {% for model in catalog.models %}
+  {% set line = line_for(model.id) %}
+  <article class="line-card {{ '' if model.text_candidate else 'muted-card' }}" data-line="{{ line.family }}">
+    <div class="top">{{ roundel(model.id, 'lg') }}<div><h3>{{ model.name }}</h3><div class="id">{{ model.id }}</div></div></div>
+    <div class="chips"><span class="chip">{{ model.category }}</span>{% if model.text_candidate %}<span class="badge ok">可计费</span>{% elif model.id.startswith('gpt-image-') %}<span class="badge off">接口未开放</span>{% else %}<span class="badge warn">暂未计价</span>{% endif %}</div>
+    <p>{{ model.use }}</p>
+    <div class="verify">{% if model.verification %}<strong>已实测</strong> {{ model.verification.protocols|join(' · ') }}<br><span class="mono">{{ model.verification.checked_at[:10] }}</span>{% else %}尚无本站生成实测记录{% endif %}</div>
+    {% if model.text_candidate %}<div class="foot"><button class="btn sm" type="button" data-select-model="{{ model.id }}">用它生成配置 <span class="arrow" aria-hidden="true">↓</span></button></div>{% endif %}
+  </article>
+  {% else %}
+  <div class="notice warn"><strong>暂时无法读取上游模型目录</strong><p>稍后刷新，或使用已知模型 ID。<a href="/status">查看探测状态</a>。</p></div>
+  {% endfor %}
+</div>
+<p class="muted small section-note">用途参考：<a href="https://learn.chatgpt.com/docs/models" target="_blank" rel="noopener">OpenAI 模型说明 ↗</a>。本站是独立转发服务，参数兼容性以本站实测和实际返回为准。</p>
+
+<section id="configuration" class="section-gap">
+  <div class="block-title"><h2>带着配置出发</h2></div>
+  <div class="form two config-form">
+    <label class="field">模型 ID<input id="config-model" class="mono" list="text-models" value="gpt-6-luna" autocomplete="off" spellcheck="false"></label>
+    <datalist id="text-models">{% for model in catalog.models if model.text_candidate %}<option value="{{ model.id }}">{% endfor %}</datalist>
+    <label class="field">示例格式<select id="config-client"><option value="curl">cURL · Chat Completions</option><option value="responses">cURL · Responses</option><option value="python">Python · OpenAI SDK</option><option value="javascript">JavaScript · OpenAI SDK</option><option value="airi">AIRI / 通用客户端</option></select></label>
+  </div>
+  <div class="screen config-screen">
+    <div class="screen-bar"><span class="title" id="config-label">连接示例</span><button class="copy" type="button" data-copy-target="config-code">复制</button></div>
+    <pre id="config-code"></pre>
+  </div>
+  <p class="muted small section-note">示例使用环境变量 <code>LUOMO_API_KEY</code>，请换成你自己的密钥并放在服务端。AIRI 若启用视觉、语音或工具，仍需分别配置对应服务；这里只配置聊天。</p>
+</section>
+
+<section class="section-gap">
+  <div class="block-title"><h2>每个接口负责什么</h2></div>
+  <div class="card flush"><div class="table-wrap"><table>
+    <thead><tr><th>接口</th><th>用途</th><th>密钥权限</th><th>边界</th></tr></thead>
+    <tbody>
+      <tr><td><code>GET /v1/models</code></td><td>读取当前密钥允许的模型</td><td><code>models:read</code></td><td>不消耗积分</td></tr>
+      <tr><td><code>POST /v1/chat/completions</code></td><td>常见客户端聊天，支持 SSE 流式</td><td><code>chat:completions</code></td><td>messages 格式</td></tr>
+      <tr><td><code>POST /v1/responses</code></td><td>Responses 协议，支持 SSE 流式</td><td><code>responses:create</code></td><td>input 格式；不支持远端会话检索</td></tr>
+      <tr><td>图像 / 音频 / embeddings / 文件</td><td colspan="3" class="muted">暂未开放；目录中的图像模型名称不代表接口可用。</td></tr>
+    </tbody>
+  </table></div></div>
+  <p class="muted small section-note">新密钥同时受协议权限和模型白名单约束；旧版已授予的 CodexProxy 权限保持兼容。每分钟请求数、日/月配额和 UTC 有效期均由网关检查，失败和取消的请求也计入次数。</p>
+</section>
+
+<section class="section-gap">
+  <div class="block-title"><h2>遇到错误时</h2><a class="text-link" href="/docs#errors">完整错误表</a></div>
+  <div class="card flush"><div class="table-wrap"><table>
+    <thead><tr><th>状态码</th><th>先检查</th></tr></thead>
+    <tbody>
+      <tr><td class="num">400</td><td>JSON 格式、模型 ID、messages / input 是否与所选协议一致。</td></tr>
+      <tr><td class="num">401</td><td>密钥无效或已撤销，检查 <code>Authorization: Bearer</code> 头。</td></tr>
+      <tr><td class="num">402</td><td>积分不足；到积分页兑换后重试。</td></tr>
+      <tr><td class="num">403</td><td>密钥过期、账户停用，或模型 / 协议权限不足。</td></tr>
+      <tr><td class="num">429</td><td>请求频率、日/月配额或上游限制；按 <code>Retry-After</code>（若有）等待。</td></tr>
+      <tr><td class="num">502 / 504</td><td>上游失败或超时；保留 <code>X-Request-ID</code>，在用量页定位。</td></tr>
+    </tbody>
+  </table></div></div>
+  <p class="muted small section-note">流式连接建立后，错误也可能出现在 SSE 事件里；HTTP 200 不能单独作为完成标志。</p>
+</section>
+{% endblock %}

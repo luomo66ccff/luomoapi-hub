@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+{% block title %}积分运营 · LuomoAPI{% endblock %}
+{% block content %}
+{% set code_states = {'active':('ok','可兑换'),'redeemed':('off','已兑换'),'revoked':('off','已作废'),'expired':('off','已过期')} %}
+{% set kinds = {'admin_credit':'管理员加分','code_redemption':'兑换码到账','usage_charge':'模型调用','payment':'支付到账','credit_freeze':'积分冻结','credit_release':'解除冻结'} %}
+<div class="page-head"><div><p class="eyebrow">Fare office · 积分运营</p><h1>积分运营</h1><p class="lead">加分、兑换码与核账。资金变动不可修改，每次操作都记录金额、处理人和理由。1 元 = 100 积分，1 美元 = 720 积分。</p></div><div class="actions"><a class="btn ghost" href="/pricing">价格表</a></div></div>
+{% if error %}<div class="notice error" role="alert">{{ error }}</div>{% endif %}
+{% if message %}<div class="notice success" role="status">{{ message }}</div>{% endif %}
+{% if payment_reviews %}
+<div class="notice error"><strong>支付待核（{{ payment_reviews|length }}）</strong><p>以下账户的生成调用已暂停。请在支付渠道核实退款或争议结果后完成核账；本页不执行退款、争议裁决或自动冲销。</p>
+  {% for item in payment_reviews %}<p><strong>{{ item.username }}</strong> · <code>{{ item.order_id }}</code> · {{ item.kind }} / {{ item.provider_status }} · {{ item.reason }} · {{ item.created_at|utc }}</p>{% endfor %}
+</div>
+{% endif %}
+{% if new_code %}
+<div class="notice success"><strong>本次发行的完整兑换码</strong><p>请现在复制并安全交付，刷新页面后不能再次读取。</p>
+  <div class="key-output section-note"><code id="new-credit-code">{{ new_code }}</code><button type="button" class="btn primary" data-copy-target="new-credit-code">复制兑换码</button></div>
+</div>
+{% endif %}
+
+<div class="grid two">
+  <section class="card">
+    <h2>人工加分</h2>
+    <form method="post" action="/admin/credits/add" class="form">
+      <input type="hidden" name="nonce" value="{{ add_nonce }}">
+      <label class="field" for="add-user">用户<select id="add-user" name="user_id" required>{% for item in users %}<option value="{{ item.id }}">{{ item.username }} · {{ item.status|label }} · 可用 {{ item.available_credits|credit }}</option>{% endfor %}</select></label>
+      <label class="field" for="add-amount">到账积分<input id="add-amount" name="amount_credits" class="mono" inputmode="decimal" type="number" min="0.000001" step="0.000001" required><small>必须大于 0，最多六位小数。</small></label>
+      <label class="field" for="add-reason">加分理由<textarea id="add-reason" name="reason" maxlength="2000" rows="2" required></textarea></label>
+      <div class="actions"><button class="btn primary" type="submit">确认加分</button></div>
+    </form>
+  </section>
+  <section class="card">
+    <h2>发行一次性兑换码</h2>
+    <form method="post" action="/admin/credits/codes" class="form">
+      <input type="hidden" name="nonce" value="{{ code_nonce }}">
+      <label class="field" for="code-amount">兑换积分<input id="code-amount" name="amount_credits" class="mono" inputmode="decimal" type="number" min="0.000001" step="0.000001" required></label>
+      <label class="field" for="code-expiry">过期时间（可选）<input id="code-expiry" name="expires_at" class="mono" type="text" placeholder="2026-12-31T23:59:59+08:00"><small>必须包含时区。</small></label>
+      <label class="field" for="code-reason">发行理由<textarea id="code-reason" name="reason" maxlength="2000" rows="2" required></textarea></label>
+      <div class="actions"><button class="btn primary" type="submit">发行兑换码</button></div>
+    </form>
+  </section>
+</div>
+
+<div class="block-title section-gap"><h2>待人工核账（{{ holds|length }}）</h2></div>
+<p class="muted small">根据可靠用量或付款凭据核对；确认 0 积分会释放冻结。确认金额超过原预留时，账户需要有足够可用余额。处理理由必填。</p>
+<div class="stack">
+  {% for item in holds %}
+  <article class="card">
+    <div class="block-title"><div><h2>{{ item.username }} · 调用 #{{ item.usage_id }}</h2><span class="muted small"><code>{{ item.model or '未知模型' }}</code> · 请求 <code>{{ item.request_id }}</code></span></div><span class="badge warn">待核</span></div>
+    <p class="small">冻结 <span class="num">{{ item.amount_credits|credit }}</span> 积分 · {{ '已派发上游' if item.dispatch_state == 'dispatched' else '派发前预留' }}{% if item.actual_units is not none %} · 回报金额 <span class="num">{{ item.actual_credits|credit }}</span> 积分{% endif %}<br>{{ item.reason }} · {{ item.created_at|utc }}</p>
+    <details class="raw"><summary>调用时价格及回报用量</summary><pre class="plain">{{ item.pricing_snapshot }}</pre><pre class="plain section-note">{{ item.usage_json or '暂无可靠用量' }}</pre></details>
+    <form method="post" action="/admin/credits/holds/{{ item.usage_id }}/resolve" class="form two section-note">
+      <label class="field" for="hold-amount-{{ item.usage_id }}">核实的实际扣费积分<input id="hold-amount-{{ item.usage_id }}" name="actual_credits" class="mono" inputmode="decimal" type="number" min="0" step="0.000001" required></label>
+      <label class="field" for="hold-reason-{{ item.usage_id }}">核账依据与处理理由<input id="hold-reason-{{ item.usage_id }}" name="reason" maxlength="2000" required></label>
+      <div class="wide actions"><button class="btn" type="submit">确认金额并解除待核</button></div>
+    </form>
+  </article>
+  {% else %}
+  <div class="card empty-state"><strong>没有待核记录</strong>断流且缺少可靠用量的调用会出现在这里。</div>
+  {% endfor %}
+</div>
+
+<div class="block-title section-gap"><h2>用户余额</h2></div>
+<div class="card flush"><div class="table-wrap"><table>
+  <thead><tr><th>用户</th><th>状态</th><th class="right">总余额</th><th class="right">冻结</th><th class="right">可用积分</th></tr></thead>
+  <tbody>{% for item in users %}<tr><td>{{ item.username }}</td><td><span class="badge {{ item.status|tone }}">{{ item.status|label }}</span></td><td class="num right">{{ item.balance_credits|credit }}</td><td class="num right">{{ item.reserved_credits|credit }}</td><td class="num right"><strong>{{ item.available_credits|credit }}</strong></td></tr>{% endfor %}</tbody>
+</table></div></div>
+
+<div class="block-title section-gap"><h2>最近兑换码</h2></div>
+<div class="card flush"><div class="table-wrap"><table>
+  <thead><tr><th>编号 / 尾号</th><th class="right">积分</th><th>状态</th><th>过期时间</th><th>兑换者</th><th>理由 / 作废</th></tr></thead>
+  <tbody>
+  {% for item in codes %}
+  {% set state = code_states.get(item.status, ('off', item.status)) %}
+  <tr>
+    <td class="num">#{{ item.id }} · …{{ item.code_tail }}</td>
+    <td class="num right">{{ item.amount_credits|credit }}</td>
+    <td><span class="badge {{ state[0] }}">{{ state[1] }}</span></td>
+    <td class="num small">{{ item.expires_at|utc if item.expires_at else '永久有效' }}</td>
+    <td>{{ item.redeemed_username or '—' }}</td>
+    <td class="small">{{ item.note }}{% if item.status == 'active' %}<form method="post" action="/admin/credits/codes/{{ item.id }}/revoke" class="inline-row compact section-note"><label class="sr-only" for="revoke-{{ item.id }}">作废理由</label><input id="revoke-{{ item.id }}" name="reason" maxlength="2000" placeholder="作废理由" required><button class="btn danger sm" type="submit">作废</button></form>{% endif %}</td>
+  </tr>
+  {% else %}
+  <tr><td colspan="6" class="empty">尚未发行兑换码。</td></tr>
+  {% endfor %}
+  </tbody>
+</table></div></div>
+
+<div class="block-title section-gap"><h2>最近资金流水</h2></div>
+<div class="card flush"><div class="table-wrap"><table>
+  <thead><tr><th>时间（UTC）</th><th>用户</th><th>类型 / 编号</th><th class="right">余额变动</th><th class="right">冻结变动</th><th class="right">余额</th><th>理由</th></tr></thead>
+  <tbody>{% for item in ledger %}<tr><td class="num">{{ item.created_at|utc }}</td><td>{{ item.username }}</td><td>{{ kinds.get(item.kind, item.kind) }}<span class="sub mono">{{ item.reference }}</span></td><td class="num right {{ 'plus' if item.delta_units > 0 else 'minus' if item.delta_units < 0 else '' }}">{{ '+' if item.delta_units > 0 else '' }}{{ item.delta_credits|credit }}</td><td class="num right muted">{{ '+' if item.delta_reserved_units > 0 else '' }}{{ item.delta_reserved_credits|credit }}</td><td class="num right">{{ item.balance_after_credits|credit }}</td><td class="small">{{ item.note }}</td></tr>{% else %}<tr><td colspan="7" class="empty">暂无资金变动。</td></tr>{% endfor %}</tbody>
+</table></div></div>
+
+<div class="block-title section-gap"><h2>最近管理审计</h2></div>
+<div class="card flush"><div class="table-wrap"><table>
+  <thead><tr><th>时间（UTC）</th><th>管理员</th><th>动作</th><th>对象</th><th class="right">金额</th><th>理由</th></tr></thead>
+  <tbody>{% for item in audit %}<tr><td class="num">{{ item.created_at|utc }}</td><td>{{ item.actor_username }}</td><td><code>{{ item.action }}</code></td><td class="small">{% if item.user_id %}用户 #{{ item.user_id }} {% endif %}{% if item.usage_id %}调用 #{{ item.usage_id }} {% endif %}{% if item.code_id %}兑换码 #{{ item.code_id }}{% endif %}</td><td class="num right">{{ item.amount_credits|credit if item.amount_units is not none else '—' }}</td><td class="small">{{ item.reason }}</td></tr>{% else %}<tr><td colspan="6" class="empty">暂无管理操作。</td></tr>{% endfor %}</tbody>
+</table></div></div>
+{% endblock %}

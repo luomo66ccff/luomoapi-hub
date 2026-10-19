@@ -6,6 +6,7 @@ from email.message import EmailMessage
 from urllib.parse import urlencode
 
 from app.config import settings
+from app.db import connect
 from app.utils.timefmt import now_iso
 
 
@@ -43,19 +44,24 @@ def send_verification_email(email: str, username: str, token: str) -> None:
 
     link = verification_link(token)
     message = EmailMessage()
-    message["Subject"] = "Verify your LuomoAPI Hub email"
+    message["Subject"] = "验证你的 LuomoAPI 邮箱 · Verify your LuomoAPI email"
     message["From"] = settings.smtp_from
     message["To"] = email
+    hours = settings.email_verification_ttl_hours
     message.set_content(
         "\n".join(
             [
-                f"Hi {username},",
+                f"{username}，你好：",
                 "",
-                "Please verify your LuomoAPI Hub account email:",
+                "请打开下面的链接，确认这个邮箱属于你的 LuomoAPI 账户：",
                 link,
                 "",
-                f"This link expires in {settings.email_verification_ttl_hours} hours.",
-                "If you did not request this account, you can ignore this email.",
+                f"链接 {hours} 小时内有效。邮箱验证不影响领取密钥和调用 API。",
+                "如果你没有注册过 LuomoAPI，可以忽略这封邮件。",
+                "",
+                "---",
+                f"Hi {username}, please verify your LuomoAPI account email: {link}",
+                f"This link expires in {hours} hours. If you did not create this account, ignore this email.",
             ]
         )
     )
@@ -74,3 +80,54 @@ def send_verification_email(email: str, username: str, token: str) -> None:
 def new_token_record() -> tuple[str, str, str]:
     token = generate_verification_token()
     return token, hash_verification_token(token), now_iso()
+
+
+def claim_verification_send(email: str, source_ip: str | None) -> bool:
+    """Atomically cap sends per recipient and per observed client address."""
+    now_dt = datetime.now(timezone.utc)
+    now = now_iso()
+    identities = [("email", email.strip().lower(), 5, 60)]
+    if source_ip:
+        identities.append(("source", source_ip.strip(), 120, 0))
+    buckets = [
+        (hashlib.sha256(f"{kind}:{value}".encode("utf-8")).hexdigest(), limit, cooldown)
+        for kind, value, limit, cooldown in identities
+    ]
+    with connect() as conn:
+        conn.execute("BEGIN IMMEDIATE")
+        current = []
+        for bucket_hash, limit, cooldown in buckets:
+            row = conn.execute(
+                "SELECT window_started_at, last_sent_at, send_count FROM verification_email_limits WHERE bucket_hash=?",
+                (bucket_hash,),
+            ).fetchone()
+            if row:
+                started = datetime.fromisoformat(row["window_started_at"])
+                last_sent = datetime.fromisoformat(row["last_sent_at"])
+                if started.tzinfo is None:
+                    started = started.replace(tzinfo=timezone.utc)
+                if last_sent.tzinfo is None:
+                    last_sent = last_sent.replace(tzinfo=timezone.utc)
+                if now_dt - started < timedelta(hours=1) and int(row["send_count"]) >= limit:
+                    conn.rollback()
+                    return False
+                if cooldown and now_dt - last_sent < timedelta(seconds=cooldown):
+                    conn.rollback()
+                    return False
+                current.append((bucket_hash, limit, started, int(row["send_count"])))
+            else:
+                current.append((bucket_hash, limit, None, 0))
+        for bucket_hash, _, started, count in current:
+            if started is None or now_dt - started >= timedelta(hours=1):
+                conn.execute(
+                    "INSERT INTO verification_email_limits(bucket_hash, window_started_at, last_sent_at, send_count) VALUES (?, ?, ?, 1) "
+                    "ON CONFLICT(bucket_hash) DO UPDATE SET window_started_at=excluded.window_started_at, last_sent_at=excluded.last_sent_at, send_count=1",
+                    (bucket_hash, now, now),
+                )
+            else:
+                conn.execute(
+                    "UPDATE verification_email_limits SET last_sent_at=?, send_count=? WHERE bucket_hash=?",
+                    (now, count + 1, bucket_hash),
+                )
+        conn.commit()
+    return True

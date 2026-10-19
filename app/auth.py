@@ -3,6 +3,7 @@ import hashlib
 import hmac
 import secrets
 import time
+from contextlib import closing
 from typing import Annotated
 
 from fastapi import Cookie, Depends, HTTPException, Request, status
@@ -14,6 +15,11 @@ from app.db import connect
 SESSION_COOKIE = "luomoapi_session"
 SESSION_MAX_AGE_SECONDS = 60 * 60 * 12
 PBKDF2_ITERATIONS = 260_000
+
+
+def api_user_eligible(user_status: str) -> bool:
+    """Registration permits API access; suspension still revokes it immediately."""
+    return user_status in {"active", "pending"}
 
 
 def hash_password(password: str, salt: str | None = None) -> str:
@@ -62,7 +68,7 @@ def verify_session(token: str | None) -> str | None:
 
 
 def get_user_by_username(username: str):
-    with connect() as conn:
+    with closing(connect()) as conn:
         return conn.execute("SELECT * FROM users WHERE username = ?", (username,)).fetchone()
 
 
